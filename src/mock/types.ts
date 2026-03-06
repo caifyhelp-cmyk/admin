@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'SALES_BRANCH';
+export type Role = 'ADMIN' | 'MANAGER' | 'SALES';
 
 export type SubscriptionStatus =
   | 'TRIAL'
@@ -18,26 +18,31 @@ export type InquiryStatus = 'OPEN' | 'ANSWERED';
 export type ServiceStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL';
 
 export interface Customer {
-<<<<<<< HEAD
   customerId: string;
-  name: string;
-  industry: string;
+  name: string; // 고객명
+  industry: string; // 업종
   contact: string;
   accountId: string;
-  joinedAt: string;
+  joinedAt: string; // ISO date string
   assignedSalesId: string | null;
-=======
-    customerId: string;
-    name: string; // 고객명
-    industry: string; // 업종
-    contact: string;
-    accountId: string;
-    joinedAt: string; // ISO date string
-    assignedSalesId: string | null;
-    serviceStatus?: ServiceStatus;
-    trialEndDate?: string;
-    prompt?: string;
->>>>>>> f453829 (update admin ui)
+  serviceStatus?: ServiceStatus;
+  trialEndDate?: string;
+  trialCount?: number;
+  prompt?: string;
+  memo?: string;
+}
+
+export interface SalesLead {
+  leadId: string;
+  salesId: string; // 기준 키
+  salesName: string; // 표시/서치용
+  salesPhone: string; // 표시/서치용
+  customerName: string;
+  customerPhone: string; // 매칭용 고객 번호
+  industry: string;
+  trialGrantFlag: boolean;
+  status: 'CONTACTED' | 'TRIAL' | 'CONVERTED' | 'DROPPED';
+  createdAt: string;
 }
 
 export interface Subscription {
@@ -96,38 +101,23 @@ export interface Settlement {
 }
 
 export interface AuditLog {
-<<<<<<< HEAD
   id: string;
   actorRole: Role;
   actorName: string;
   actionType: string;
-  targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | string;
+  targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | 'SALES_LEAD' | string;
   targetId: string;
   meta?: {
     amount?: number;
     prevStatus?: string;
     newStatus?: string;
     reason?: string;
+    field?: string;
+    oldValue?: any;
+    newValue?: any;
     [key: string]: any;
   };
+  before?: any;
+  after?: any;
   timestamp: string;
 }
-=======
-    id: string;
-    actorRole: Role;
-    actorName: string;
-    actionType: string;
-    targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | string;
-    targetId: string;
-    meta?: {
-        amount?: number;
-        prevStatus?: string;
-        newStatus?: string;
-        reason?: string;
-        [key: string]: any;
-    };
-    before?: any;
-    after?: any;
-    timestamp: string;
-}
->>>>>>> f453829 (update admin ui)

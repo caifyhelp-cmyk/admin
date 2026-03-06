@@ -21,21 +21,21 @@ export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
     // Role Filtering logic
-    const accessibleCustomers = currentRole === 'SALES_BRANCH'
+    const accessibleCustomers = currentRole === 'SALES'
         ? customers.filter(c => c.assignedSalesId === currentSalesId)
         : customers;
 
     const accessibleCustomerIds = new Set(accessibleCustomers.map(c => c.customerId));
 
-    const accessibleInquiries = currentRole === 'SALES_BRANCH'
+    const accessibleInquiries = currentRole === 'SALES'
         ? inquiries.filter(i => accessibleCustomerIds.has(i.customerId))
         : inquiries;
 
-    const accessibleSubscriptions = currentRole === 'SALES_BRANCH'
+    const accessibleSubscriptions = currentRole === 'SALES'
         ? subscriptions.filter(s => accessibleCustomerIds.has(s.customerId))
         : subscriptions;
 
-    const accessiblePayments = currentRole === 'SALES_BRANCH'
+    const accessiblePayments = currentRole === 'SALES'
         ? payments.filter(p => accessibleCustomerIds.has(p.customerId))
         : payments;
 

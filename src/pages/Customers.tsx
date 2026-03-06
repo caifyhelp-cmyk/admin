@@ -109,7 +109,7 @@ export const Customers: React.FC = () => {
                             options={Object.entries(PAYMENT_STATUS_LABELS).map(([k, v]) => ({ label: v, value: k }))}
                             className="w-full md:w-36"
                         />
-                        {(currentRole === 'SUPER_ADMIN' || currentRole === 'ADMIN') && (
+                        {(currentRole === 'ADMIN' || currentRole === 'MANAGER') && (
                             <SelectFilter
                                 value={filterSalesId}
                                 onChange={setFilterSalesId}

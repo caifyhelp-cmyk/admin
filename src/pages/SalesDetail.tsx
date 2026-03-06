@@ -19,8 +19,8 @@ export const SalesDetail: React.FC = () => {
     const customers = useCustomerStore(state => state.getCustomersBySalesId(salesId!));
     const paymentsStore = usePaymentStore(state => state.payments);
 
-    // Sales detail is only visible to SUPER_ADMIN
-    if (currentRole !== 'SUPER_ADMIN') {
+    // Sales detail is only visible to ADMIN
+    if (currentRole !== 'ADMIN') {
         return <Navigate to="/dashboard" replace />;
     }
 

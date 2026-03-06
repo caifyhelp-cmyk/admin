@@ -21,8 +21,8 @@ export const AuditLogs: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('');
 
-    // Access check
-    if (currentRole === 'SALES_BRANCH') {
+    // Access check: only ADMIN allowed
+    if (currentRole !== 'ADMIN') {
         return <Navigate to="/" replace />;
     }
 
@@ -71,10 +71,10 @@ export const AuditLogs: React.FC = () => {
                             onChange={setFilterRole}
                             placeholder="권한별 조회 전체"
                             options={[
-                                { label: 'SUPER_ADMIN', value: 'SUPER_ADMIN' },
                                 { label: 'ADMIN', value: 'ADMIN' },
-                                { label: 'SYSTEM', value: 'SYSTEM' },
-                                { label: 'SALES_BRANCH', value: 'SALES_BRANCH' }
+                                { label: 'MANAGER', value: 'MANAGER' },
+                                { label: 'SALES', value: 'SALES' },
+                                { label: 'SYSTEM', value: 'SYSTEM' }
                             ]}
                         />
                     </div>

@@ -1,4 +1,4 @@
-import type { Customer, Subscription, Payment, Inquiry, Sales, AuditLog } from './types';
+import type { Customer, Subscription, Payment, Inquiry, Sales, AuditLog, SalesLead } from './types';
 import { subDays, formatISO } from 'date-fns';
 
 const now = new Date();
@@ -7,31 +7,82 @@ export const mockSales: Sales[] = [
     { salesId: 'sales_001', name: '김태형', phone: '010-1234-5678' },
     { salesId: 'sales_002', name: '이민호', phone: '010-2345-6789' },
     { salesId: 'sales_003', name: '박서준', phone: '010-3456-7890' },
-    { salesId: 'sales_004', name: '최우식', phone: '010-4567-8901' },
-    { salesId: 'sales_005', name: '정해인', phone: '010-5678-9012' },
 ];
 
-export const mockCustomers: Customer[] = Array.from({ length: 30 }).map((_, i) => ({
-    customerId: `cust_${String(i + 1).padStart(3, '0')}`,
-    name: `(주)고객사${i + 1}`,
-    industry: ['IT/Software', 'Manufacturing', 'Retail', 'Healthcare', 'Finance'][i % 5],
-    contact: `contact${i + 1}@example.com`,
-    accountId: `acc_${String(i + 1).padStart(3, '0')}`,
-    joinedAt: formatISO(subDays(now, Math.floor(Math.random() * 365))),
-    assignedSalesId: i < 20 ? mockSales[i % 5].salesId : null,
-}));
+export const mockSalesLeads: SalesLead[] = [
+    {
+        leadId: 'lead_001',
+        salesId: 'sales_001',
+        salesName: '김태형',
+        salesPhone: '010-1234-5678',
+        customerName: '(주)고객사1',
+        customerPhone: '010-1111-2222',
+        industry: 'IT/Software',
+        trialGrantFlag: true,
+        status: 'CONVERTED',
+        createdAt: formatISO(subDays(now, 10))
+    },
+    {
+        leadId: 'lead_002',
+        salesId: 'sales_002',
+        salesName: '이민호',
+        salesPhone: '010-2345-6789',
+        customerName: '(주)고객사2',
+        customerPhone: '010-2222-3333',
+        industry: 'Manufacturing',
+        trialGrantFlag: true,
+        status: 'TRIAL',
+        createdAt: formatISO(subDays(now, 5))
+    }
+];
+
+export const mockCustomers: Customer[] = Array.from({ length: 30 }).map((_, i) => {
+    let assignedSalesId: string | null = null;
+    let trialCount = 0;
+    let serviceStatus: Customer['serviceStatus'] = 'ACTIVE';
+
+    if (i === 0) { // Matches lead_001
+        assignedSalesId = 'sales_001';
+        serviceStatus = 'ACTIVE';
+    } else if (i === 1) { // Matches lead_002
+        assignedSalesId = 'sales_002';
+        serviceStatus = 'TRIAL';
+        trialCount = 8;
+    } else if (i < 15) {
+        assignedSalesId = mockSales[i % 3].salesId;
+    }
+
+    return {
+        customerId: `cust_${String(i + 1).padStart(3, '0')}`,
+        name: `(주)고객사${i + 1}`,
+        industry: ['IT/Software', 'Manufacturing', 'Retail', 'Healthcare', 'Finance'][i % 5],
+        contact: `010-${String(i + 1).padStart(4, '0')}-${String(i + 1).padStart(4, '0')}`,
+        accountId: `acc_${String(i + 1).padStart(3, '0')}`,
+        joinedAt: formatISO(subDays(now, Math.floor(Math.random() * 365))),
+        assignedSalesId,
+        serviceStatus,
+        trialCount,
+        memo: i === 0 ? 'VIP 고객. 특별 관리 요망.' : undefined
+    };
+});
+
+export const CAIFY_PRODUCTS = [
+    '블로그 자동화',
+    '연동형 홈페이지',
+    '블로그 자동화 + 연동형 홈페이지'
+];
 
 export const mockSubscriptions: Subscription[] = mockCustomers.map((c, i) => {
-    let status: Subscription['status'] = 'ACTIVE';
-    if (i === 5) status = 'TRIAL';
+    let status: Subscription['status'] = c.serviceStatus === 'TRIAL' ? 'TRIAL' : 'ACTIVE';
     if (i === 10) status = 'SUSPENDED';
     if (i === 15) status = 'CANCELLED';
-    if (i === 20) status = 'ACTIVE'; // Will force payment failed later
+
+    const product = CAIFY_PRODUCTS[i % 3];
 
     return {
         subscriptionId: `sub_${c.customerId}`,
         customerId: c.customerId,
-        product: ['Basic Plan', 'Pro Plan', 'Enterprise Plan'][i % 3],
+        product,
         status,
         startAt: c.joinedAt,
         endAt: formatISO(subDays(now, -30)), // 30 days in future roughly
@@ -45,24 +96,26 @@ for (let i = 0; i < 80; i++) {
     const subscription = mockSubscriptions[i % 30];
     let status: Payment['status'] = 'PAID';
 
-    // Edge case: ACTIVE subscription but payment FAILED
+    if (subscription.status === 'TRIAL') continue; // No payment for trial
+
     if (customer.customerId === 'cust_021' && i > 60) {
         status = 'FAILED';
     }
-    // Edge case: Refund payment
     if (i === 75 || i === 76) {
         status = 'REFUND';
     }
+
+    const amount = subscription.product === '블로그 자동화 + 연동형 홈페이지' ? 500000 : 300000;
 
     mockPayments.push({
         paymentId: `pay_${String(i + 1).padStart(3, '0')}`,
         customerId: customer.customerId,
         subscriptionId: subscription.subscriptionId,
-        amount: [10000, 50000, 150000][i % 3], // KRW
+        amount,
         currency: 'KRW',
         status,
         paidAt: formatISO(subDays(now, Math.floor(Math.random() * 90))),
-        method: 'CARD',
+        method: i % 4 === 0 ? 'TRANSFER' : 'CARD',
         billingCycleNo: Math.floor(i / 30) + 1,
     });
 }
@@ -94,13 +147,15 @@ export const mockInquiries: Inquiry[] = Array.from({ length: 50 }).map((_, i) =>
 export const mockAuditLogs: AuditLog[] = [
     {
         id: 'audit_001',
-        actorRole: 'SUPER_ADMIN',
+        actorRole: 'ADMIN',
         actorName: 'Admin User',
         actionType: 'UPDATE_SUBSCRIPTION',
         targetType: 'SUBSCRIPTION',
         targetId: 'sub_cust_011',
-        before: { status: 'ACTIVE' },
-        after: { status: 'SUSPENDED' },
+        meta: {
+            prevStatus: 'ACTIVE',
+            newStatus: 'SUSPENDED'
+        },
         timestamp: formatISO(subDays(now, 1)),
     },
 ];

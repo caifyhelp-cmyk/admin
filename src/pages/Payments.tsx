@@ -169,7 +169,7 @@ export const Payments: React.FC = () => {
                                 </Td>
                                 <Td className="text-gray-500">{p.method}</Td>
                                 <Td>
-                                    {p.status === 'PAID' && currentRole !== 'SALES_BRANCH' && (
+                                    {p.status === 'PAID' && currentRole !== 'SALES' && (
                                         <button
                                             onClick={() => handleRefund(p.paymentId)}
                                             className="text-red-600 hover:text-red-800 text-xs font-semibold border border-red-200 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors"

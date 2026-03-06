@@ -11,6 +11,9 @@ import { InquiryDetail } from '../pages/InquiryDetail';
 import { SalesDetail } from '../pages/SalesDetail';
 import { Subscriptions } from '../pages/Subscriptions';
 import { Payments } from '../pages/Payments';
+import { SalesLeads } from '../pages/SalesLeads';
+import { SalesLeadForm } from '../pages/SalesLeadForm';
+import { SalesLeadDetail } from '../pages/SalesLeadDetail';
 
 export const router = createHashRouter([
   {
@@ -27,6 +30,9 @@ export const router = createHashRouter([
       { path: 'inquiries/:inquiryId', element: <InquiryDetail /> },
       { path: 'sales', element: <Sales /> },
       { path: 'sales/:salesId', element: <SalesDetail /> },
+      { path: 'sales-leads', element: <SalesLeads /> },
+      { path: 'sales-leads/new', element: <SalesLeadForm /> },
+      { path: 'sales-leads/:leadId', element: <SalesLeadDetail /> },
       { path: 'analytics', element: <Analytics /> },
       { path: 'audit', element: <AuditLogs /> },
     ],

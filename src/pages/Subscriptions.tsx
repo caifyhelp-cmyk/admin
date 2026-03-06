@@ -135,8 +135,8 @@ export const Subscriptions: React.FC = () => {
                                         value={s.status}
                                         onChange={(e) => handleStatusChange(s.subscriptionId, e.target.value)}
                                         className="rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 px-3 text-sm focus:ring-2 focus:ring-indigo-600 w-32"
-                                        disabled={currentRole === 'SALES_BRANCH'}
-                                        title={currentRole === 'SALES_BRANCH' ? "영업 담당자는 상태를 변경할 수 없습니다." : "상태 변경"}
+                                        disabled={currentRole === 'SALES'}
+                                        title={currentRole === 'SALES' ? "영업 담당자는 상태를 변경할 수 없습니다." : "상태 변경"}
                                     >
                                         {Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                                     </select>

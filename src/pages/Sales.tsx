@@ -29,7 +29,7 @@ export const Sales: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'PERFORMANCE' | 'SETTLEMENTS'>('CUSTOMERS');
     const [searchQuery, setSearchQuery] = useState('');
 
-    if (currentRole !== 'SUPER_ADMIN') {
+    if (currentRole !== 'ADMIN') {
         return <Navigate to="/" replace />;
     }
 

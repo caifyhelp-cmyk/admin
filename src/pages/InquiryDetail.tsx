@@ -30,7 +30,7 @@ export const InquiryDetail: React.FC = () => {
         );
     }
 
-    if (currentRole === 'SALES_BRANCH' && customer?.assignedSalesId !== currentSalesId) {
+    if (currentRole === 'SALES' && customer?.assignedSalesId !== currentSalesId) {
         return (
             <div className="flex justify-center items-center h-64">
                 <EmptyState title="접근 권한 없음" description="담당하고 있는 고객의 문의가 아닙니다." />
@@ -77,7 +77,7 @@ export const InquiryDetail: React.FC = () => {
                     <StatusBadge status={inquiry.status} label={INQUIRY_STATUS_LABELS[inquiry.status]} type="inquiry" />
                 </div>
                 <div className="flex gap-2 items-center">
-                    {(currentRole === 'SUPER_ADMIN' || currentRole === 'ADMIN') && (
+                    {currentRole === 'ADMIN' && (
                         <button onClick={handleDeleteInquiry} className="text-sm border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md font-medium transition-colors">삭제</button>
                     )}
                     <button onClick={() => navigate(-1)} className="text-sm border border-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-50 font-medium bg-white shadow-sm transition-colors">목록으로</button>
@@ -112,7 +112,7 @@ export const InquiryDetail: React.FC = () => {
                             <span className="font-bold text-indigo-900">기존 등록된 답변 <span className="text-xs font-normal text-indigo-600 ml-1">({inquiry.answer.authorRole})</span></span>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-medium text-indigo-600">{format(new Date(inquiry.answer.updatedAt), 'yyyy-MM-dd HH:mm')}</span>
-                                {(currentRole === 'SUPER_ADMIN' || currentRole === 'ADMIN') && (
+                                {currentRole === 'ADMIN' && (
                                     <button onClick={handleDeleteAnswer} className="text-xs text-red-500 hover:underline">답변 삭제</button>
                                 )}
                             </div>

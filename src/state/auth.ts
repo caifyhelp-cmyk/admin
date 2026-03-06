@@ -8,7 +8,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-    currentRole: 'SUPER_ADMIN',
+    currentRole: 'ADMIN',
     currentSalesId: 'sales_001',
     setRole: (role) => set({ currentRole: role }),
 }));

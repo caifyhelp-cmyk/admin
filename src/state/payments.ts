@@ -7,6 +7,7 @@ interface PaymentState {
     payments: Payment[];
 
     // Actions
+    processPayment: (paymentData: Omit<Payment, 'status' | 'paidAt'>, actorRole: Role, actorName: string) => void;
     processRefund: (paymentId: string, actorRole: Role, actorName: string) => void;
 
     // Selectors
@@ -15,6 +16,39 @@ interface PaymentState {
 
 export const usePaymentStore = create<PaymentState>((set, get) => ({
     payments: mockPayments,
+
+    processPayment: (paymentData, actorRole, actorName) => {
+        // Idempotency Check: Prevent duplicate payment reflections
+        const isDuplicate = get().payments.some(p => p.paymentId === paymentData.paymentId);
+        if (isDuplicate) {
+            console.warn(`Payment ${paymentData.paymentId} is already processed. Skipping.`);
+            return;
+        }
+
+        const newPayment: Payment = {
+            ...paymentData,
+            status: 'PAID',
+            paidAt: new Date().toISOString()
+        };
+
+        set(state => ({
+            payments: [newPayment, ...state.payments]
+        }));
+
+        useAuditLogStore.getState().addAuditLog({
+            actorRole,
+            actorName,
+            actionType: 'PROCESS_PAYMENT',
+            targetType: 'PAYMENT',
+            targetId: paymentData.paymentId,
+            meta: {
+                amount: paymentData.amount,
+                currency: paymentData.currency,
+                method: paymentData.method,
+                customerId: paymentData.customerId
+            }
+        });
+    },
 
     processRefund: (paymentId, actorRole, actorName) => {
         const payment = get().payments.find(p => p.paymentId === paymentId);

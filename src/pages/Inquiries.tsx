@@ -198,7 +198,7 @@ export const Inquiries: React.FC = () => {
                                 )}
                             </h3>
 
-                            {isEditingAnswer && currentRole !== 'SALES_BRANCH' ? (
+                            {isEditingAnswer && currentRole !== 'SALES' ? (
                                 <div className="space-y-3">
                                     <textarea
                                         rows={5}
@@ -229,7 +229,7 @@ export const Inquiries: React.FC = () => {
                                     </div>
                                     <div className="flex justify-between items-center text-xs text-gray-500">
                                         <span>작성: {selectedInquiry.answer.authorRole} · {format(new Date(selectedInquiry.answer.updatedAt), 'yyyy-MM-dd HH:mm')}</span>
-                                        {currentRole !== 'SALES_BRANCH' && (
+                                        {currentRole !== 'SALES' && (
                                             <button
                                                 onClick={handleResendNotification}
                                                 className="px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
