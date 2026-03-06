@@ -25,43 +25,36 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
         if (!payment.salesId || payment.status === 'REFUND') return;
         const sId = payment.salesId as string;
 
-        const date = new Date(payment.paidAt);
-        const periodFrom = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
-        const periodTo = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
         const rate = salesState.getSalesById(sId)?.commissionRate ?? salesState.baseCommissionRate;
         const commission = payment.amount * rate;
 
-        const existingItem = initialSettlements.find(s => s.salesId === sId && s.periodFrom === periodFrom);
-        if (existingItem) {
-            existingItem.amount += commission;
-        } else {
-            initialSettlements.push({
-                settlementId: `stl_${sId}_${date.getFullYear()}_${date.getMonth() + 1}`,
-                salesId: sId,
-                periodFrom,
-                periodTo,
-                amount: commission,
-                status: 'PENDING'
-            });
-        }
+        const customerStore = useCustomerStore.getState();
+        const subscribeStore = useSubscriptionStore.getState();
+
+        const customer = customerStore.customers.find(c => c.customerId === payment.customerId);
+        const sub = subscribeStore.subscriptions.find(s => s.subscriptionId === payment.subscriptionId);
+
+        initialSettlements.push({
+            settlementId: `stl_${payment.paymentId}`,
+            salesId: sId,
+            paymentId: payment.paymentId,
+            customerId: payment.customerId,
+            customerName: customer?.name || 'Unknown',
+            product: sub?.product || 'Unknown',
+            paymentAmount: payment.amount,
+            commissionRate: rate,
+            amount: commission,
+            paidAt: payment.paidAt,
+            status: 'PENDING'
+        });
     });
 
     return {
         settlements: initialSettlements,
 
         processPaymentForSettlement: (payment) => {
-            // 직접 가입은 정산에서 제외
             if (!payment.salesId) return;
             const sId = payment.salesId as string;
-
-            // 멱등성: 해당 결제건이 이미 정산 리스트에 반영되었는지 (동일 기간 등) 여부는 
-            // 일반적으로 paymentId가 settlementItem에 종속되지만, 
-            // 현 구조상 월별 집계(Settlement)를 갱신하거나 새로 생성함.
-
-            const date = new Date(payment.paidAt);
-            const periodFrom = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
-            const periodTo = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
             const salesStore = useSalesStore.getState();
             const sales = salesStore.getSalesById(sId);
@@ -69,22 +62,31 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
 
             const commission = payment.amount * rate;
 
+            const customerStore = useCustomerStore.getState();
+            const subscribeStore = useSubscriptionStore.getState();
+
+            const customer = customerStore.customers.find(c => c.customerId === payment.customerId);
+            const sub = subscribeStore.subscriptions.find(s => s.subscriptionId === payment.subscriptionId);
+
             set((state) => {
                 const existingIdx = state.settlements.findIndex(
-                    s => s.salesId === sId && s.periodFrom === periodFrom
+                    s => s.paymentId === payment.paymentId
                 );
 
                 if (existingIdx >= 0) {
-                    const updated = [...state.settlements];
-                    updated[existingIdx].amount += commission;
-                    return { settlements: updated };
+                    return state;
                 } else {
                     const newSettlement: Settlement = {
-                        settlementId: `stl_${sId}_${date.getFullYear()}_${date.getMonth() + 1}`,
+                        settlementId: `stl_${payment.paymentId}`,
                         salesId: sId,
-                        periodFrom,
-                        periodTo,
+                        paymentId: payment.paymentId,
+                        customerId: payment.customerId,
+                        customerName: customer?.name || 'Unknown',
+                        product: sub?.product || 'Unknown',
+                        paymentAmount: payment.amount,
+                        commissionRate: rate,
                         amount: commission,
+                        paidAt: payment.paidAt,
                         status: 'PENDING'
                     };
 
@@ -106,31 +108,25 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
             if (!payment.salesId) return;
             const sId = payment.salesId as string;
 
-            const date = new Date(payment.paidAt);
-            const periodFrom = new Date(date.getFullYear(), date.getMonth(), 1).toISOString();
-
-            const salesStore = useSalesStore.getState();
-            const sales = salesStore.getSalesById(sId);
-            const rate = sales?.commissionRate ?? salesStore.baseCommissionRate;
-
-            const deduction = payment.amount * rate;
-
             set((state) => {
                 const existingIdx = state.settlements.findIndex(
-                    s => s.salesId === sId && s.periodFrom === periodFrom
+                    s => s.paymentId === payment.paymentId
                 );
 
                 if (existingIdx >= 0) {
                     const updated = [...state.settlements];
-                    updated[existingIdx].amount -= deduction;
+                    // Instead of deducting amount from a monthly pot, we just remove the settlement entirely or drop it to 0. 
+                    // To follow standard logic, refunding a payment drops its commission to 0 or deletes it. Let's filter it out.
+                    const targetStl = updated[existingIdx];
+                    updated.splice(existingIdx, 1);
 
                     useAuditLogStore.getState().addAuditLog({
                         actorRole: 'SYSTEM' as any,
                         actorName: 'System',
                         actionType: 'DEDUCT_SETTLEMENT',
                         targetType: 'SETTLEMENT',
-                        targetId: updated[existingIdx].settlementId,
-                        meta: { deduction, newAmount: updated[existingIdx].amount }
+                        targetId: targetStl.settlementId,
+                        meta: { deduction: targetStl.amount, newAmount: 0 }
                     });
 
                     return { settlements: updated };
@@ -152,8 +148,8 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
                 return { settlements };
             });
 
-            const actionType = status === 'CONFIRMED' ? 'CONFIRM_SETTLEMENT' :
-                status === 'PAID' ? 'COMPLETE_SETTLEMENT' : 'UPDATE_SETTLEMENT';
+            const actionType = status === 'PAID' ? 'COMPLETE_SETTLEMENT' :
+                status === 'ON_HOLD' ? 'HOLD_SETTLEMENT' : 'UPDATE_SETTLEMENT';
 
             useAuditLogStore.getState().addAuditLog({
                 actorRole,

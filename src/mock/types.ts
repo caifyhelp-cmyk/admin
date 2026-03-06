@@ -94,12 +94,17 @@ export interface Sales {
 }
 
 export interface Settlement {
-  settlementId: string;
+  settlementId: string; // Maps 1:1 to paymentId conceptually or uses stl_paymentId
   salesId: string;
-  periodFrom: string;
-  periodTo: string;
-  amount: number;
-  status: 'PENDING' | 'CONFIRMED' | 'PAID';
+  paymentId: string;
+  customerId: string;
+  customerName: string;
+  product: string;
+  paymentAmount: number;
+  commissionRate: number;
+  amount: number; // calculated commission amount
+  paidAt: string; // ISO date of payment
+  status: 'PENDING' | 'ON_HOLD' | 'PAID';
 }
 
 export type AuditActionType =
