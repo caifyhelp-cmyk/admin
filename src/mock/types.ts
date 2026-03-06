@@ -104,7 +104,7 @@ export interface Settlement {
   commissionRate: number;
   amount: number; // calculated commission amount
   paidAt: string; // ISO date of payment
-  status: 'PENDING' | 'ON_HOLD' | 'PAID';
+  status: 'PENDING' | 'CONFIRMED' | 'ON_HOLD' | 'PAID';
 }
 
 export type AuditActionType =

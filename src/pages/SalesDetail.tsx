@@ -157,7 +157,7 @@ export const SalesDetail: React.FC = () => {
                         <Table className="bg-white rounded-lg overflow-hidden border border-indigo-100 shadow-sm min-w-full">
                             <Thead className="bg-indigo-50/50">
                                 <Tr>
-                                    <Th className="text-indigo-900">정산 대상월</Th>
+                                    <Th className="text-indigo-900">결제일</Th>
                                     <Th className="text-indigo-900 text-right">정산 금액</Th>
                                     <Th className="text-indigo-900 text-center">지급 상태</Th>
                                     <Th className="text-indigo-900 text-center">관리</Th>
@@ -169,10 +169,10 @@ export const SalesDetail: React.FC = () => {
                                         <Td colSpan={4} className="text-center py-6 text-gray-500 text-sm">기록된 정산 내역이 없습니다.</Td>
                                     </Tr>
                                 )}
-                                {settlements.sort((a, b) => new Date(b.periodFrom).getTime() - new Date(a.periodFrom).getTime()).map(stl => (
+                                {settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(stl => (
                                     <Tr key={stl.settlementId} className="hover:bg-indigo-50/30">
                                         <Td className="text-indigo-900 font-medium text-sm whitespace-nowrap">
-                                            {format(new Date(stl.periodFrom), 'yyyy년 MM월')}
+                                            {format(new Date(stl.paidAt), 'yyyy년 MM월 dd일')}
                                         </Td>
                                         <Td className="text-gray-900 font-extrabold text-right whitespace-nowrap">
                                             {stl.amount.toLocaleString()}원

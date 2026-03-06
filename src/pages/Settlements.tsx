@@ -19,11 +19,11 @@ export const Settlements: React.FC = () => {
 
     const totalSettlementAmount = settlements.reduce((sum, s) => sum + s.amount, 0);
 
-    // 이번 달 정산 예정액 찾기
+    // 이번 달 정산 대상액 (이번 달 결제분)
     const now = new Date();
-    const thisMonthPeriodFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const thisMonthSettlement = settlements.find(s => s.periodFrom === thisMonthPeriodFrom);
-    const thisMonthExpected = thisMonthSettlement ? thisMonthSettlement.amount : 0;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonthSettlements = settlements.filter(s => new Date(s.paidAt).getTime() >= startOfMonth.getTime());
+    const thisMonthExpected = thisMonthSettlements.reduce((sum, s) => sum + s.amount, 0);
 
     return (
         <div className="space-y-6">
@@ -56,7 +56,7 @@ export const Settlements: React.FC = () => {
 
             <Card className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5">
                 <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
-                    <h3 className="text-base font-semibold text-gray-900">월별 정산 내역</h3>
+                    <h3 className="text-base font-semibold text-gray-900">개별 정산 내역</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-300">
@@ -66,7 +66,7 @@ export const Settlements: React.FC = () => {
                                     정산 ID
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    정산 기간
+                                    결제 일시
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     정산 금액
@@ -84,13 +84,13 @@ export const Settlements: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                settlements.sort((a, b) => new Date(b.periodFrom).getTime() - new Date(a.periodFrom).getTime()).map(settlement => (
+                                settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(settlement => (
                                     <tr key={settlement.settlementId} className="hover:bg-gray-50">
                                         <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
                                             {settlement.settlementId}
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                            {format(new Date(settlement.periodFrom), 'yyyy-MM-dd')} ~ {format(new Date(settlement.periodTo), 'yyyy-MM-dd')}
+                                            {format(new Date(settlement.paidAt), 'yyyy-MM-dd HH:mm')}
                                         </td>
                                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-semibold">
                                             {settlement.amount.toLocaleString()}원

@@ -124,7 +124,7 @@ export const Analytics: React.FC = () => {
                 </div>
             </Card>
 
-            <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <dl className={`grid grid-cols-1 gap-5 ${currentRole === 'SALES' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
                 <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
                     <dt className="text-sm font-medium text-gray-500">총 매출 (선택 기간)</dt>
                     <dd className="mt-2 text-3xl font-bold tracking-tight text-gray-900 border-l-4 border-indigo-500 pl-3">{totalRevenue.toLocaleString()}원</dd>
@@ -136,13 +136,15 @@ export const Analytics: React.FC = () => {
                         <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestProductRev.toLocaleString()}원</dd>
                     </div>
                 </Card>
-                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
-                    <dt className="text-sm font-medium text-gray-500">최우수 영업점/유입</dt>
-                    <div>
-                        <dd className="mt-2 text-2xl font-bold tracking-tight text-blue-600 truncate border-l-4 border-blue-500 pl-3">{bestSales}</dd>
-                        <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestSalesRev.toLocaleString()}원</dd>
-                    </div>
-                </Card>
+                {currentRole !== 'SALES' && (
+                    <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
+                        <dt className="text-sm font-medium text-gray-500">최우수 영업점/유입</dt>
+                        <div>
+                            <dd className="mt-2 text-2xl font-bold tracking-tight text-blue-600 truncate border-l-4 border-blue-500 pl-3">{bestSales}</dd>
+                            <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestSalesRev.toLocaleString()}원</dd>
+                        </div>
+                    </Card>
+                )}
             </dl>
 
             <Card className="p-5 bg-white shadow-sm border border-gray-100">
