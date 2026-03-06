@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useSalesStore } from '../state/sales';
 import { useCustomerStore } from '../state/customers';
@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { format } from 'date-fns';
 import { usePaymentStore } from '../state/payments';
+import { useSettlementStore } from '../state/settlements';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
 import type { Settlement } from '../mock/types';
 
@@ -14,10 +15,15 @@ export const SalesDetail: React.FC = () => {
     const { salesId } = useParams<{ salesId: string }>();
     const navigate = useNavigate();
     const { currentRole } = useAuthStore();
+    const [isEditingRate, setIsEditingRate] = useState(false);
+    const [rateInput, setRateInput] = useState('');
 
     const salesAgent = useSalesStore(state => state.getSalesById(salesId!));
+    const { baseCommissionRate, updateSalesCommissionRate } = useSalesStore();
     const customers = useCustomerStore(state => state.getCustomersBySalesId(salesId!));
     const paymentsStore = usePaymentStore(state => state.payments);
+    const settlements = useSettlementStore(state => state.getSettlementsBySalesId(salesId!));
+    const { updateSettlementStatus } = useSettlementStore();
 
     // Sales detail is only visible to ADMIN
     if (currentRole !== 'ADMIN') {
@@ -38,20 +44,23 @@ export const SalesDetail: React.FC = () => {
         .filter(p => p.status === 'PAID')
         .reduce((sum, p) => sum + p.amount, 0);
 
-    // Mock Settlements
-    const mockSettlements: Settlement[] = [
-        { settlementId: 'stl_005', salesId: salesId!, periodFrom: '2024-02-01', periodTo: '2024-02-29', amount: Math.floor(totalRevenue * 0.15), status: 'PENDING' },
-        { settlementId: 'stl_004', salesId: salesId!, periodFrom: '2024-01-01', periodTo: '2024-01-31', amount: 1250000, status: 'CONFIRMED' },
-        { settlementId: 'stl_003', salesId: salesId!, periodFrom: '2023-12-01', periodTo: '2023-12-31', amount: 1400000, status: 'PAID' },
-        { settlementId: 'stl_002', salesId: salesId!, periodFrom: '2023-11-01', periodTo: '2023-11-30', amount: 980000, status: 'PAID' },
-        { settlementId: 'stl_001', salesId: salesId!, periodFrom: '2023-10-01', periodTo: '2023-10-31', amount: 850000, status: 'PAID' },
-    ];
+    const commissionRate = salesAgent.commissionRate ?? baseCommissionRate;
+
+    const handleRateSave = () => {
+        const val = parseFloat(rateInput);
+        if (!isNaN(val) && val >= 0 && val <= 100) {
+            updateSalesCommissionRate(salesId!, val / 100, currentRole, 'Admin');
+            setIsEditingRate(false);
+        } else {
+            alert('올바른 요율(0~100)을 입력하세요.');
+        }
+    };
 
     const getSettlementStatusBadge = (status: Settlement['status']) => {
         switch (status) {
             case 'PAID': return <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-emerald-200">정산 완료</span>;
             case 'CONFIRMED': return <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-blue-200">정산 확정</span>;
-            case 'PENDING': return <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-gray-200">정산 대기 중</span>;
+            case 'PENDING': return <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-gray-200">정산 예정</span>;
             default: return null;
         }
     };
@@ -72,10 +81,41 @@ export const SalesDetail: React.FC = () => {
                     <dt className="text-sm font-bold text-gray-500">누적 발생 매출 (유효 결제)</dt>
                     <dd className="mt-2 text-3xl font-extrabold text-emerald-600 border-l-4 border-emerald-500 pl-3">{totalRevenue.toLocaleString()}원</dd>
                 </Card>
-                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-200">
-                    <dt className="text-sm font-bold text-gray-500">전화번호 / ID</dt>
-                    <dd className="mt-2 text-xl font-bold text-gray-900 border-l-4 border-blue-500 pl-3">{salesAgent.phone}</dd>
-                    <dd className="mt-1 text-sm font-medium text-gray-400 pl-4">{salesAgent.salesId}</dd>
+                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div>
+                        <dt className="text-sm font-bold text-gray-500">전화번호 / ID</dt>
+                        <dd className="mt-2 text-xl font-bold text-gray-900 border-l-4 border-blue-500 pl-3">{salesAgent.phone}</dd>
+                        <dd className="mt-1 text-sm font-medium text-gray-400 pl-4">{salesAgent.salesId}</dd>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                            <span className="text-xs font-bold text-gray-500">적용 수수료율</span>
+                            {!isEditingRate ? (
+                                <p className="text-lg font-bold text-indigo-600 mt-1">{(commissionRate * 100).toFixed(1)}%</p>
+                            ) : (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <input
+                                        type="number"
+                                        className="w-20 px-2 py-1 text-sm border rounded"
+                                        value={rateInput}
+                                        onChange={(e) => setRateInput(e.target.value)}
+                                        placeholder="%"
+                                    />
+                                    <span className="text-sm font-bold">%</span>
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            {!isEditingRate ? (
+                                <button onClick={() => { setIsEditingRate(true); setRateInput((commissionRate * 100).toString()); }} className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-200 font-medium">변경</button>
+                            ) : (
+                                <div className="flex gap-1">
+                                    <button onClick={handleRateSave} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 font-medium">저장</button>
+                                    <button onClick={() => setIsEditingRate(false)} className="text-xs bg-white border border-gray-300 text-gray-700 px-2 py-1.5 rounded hover:bg-gray-50 font-medium">취소</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </Card>
             </dl>
 
@@ -112,32 +152,47 @@ export const SalesDetail: React.FC = () => {
                 <Card className="p-5 bg-indigo-50 shadow-sm border border-indigo-100">
                     <div className="border-b border-indigo-200 pb-3 mb-4 flex justify-between items-center">
                         <h3 className="text-lg font-bold text-indigo-900">최근 정산 내역</h3>
-                        <span className="text-xs font-semibold text-indigo-600 bg-white px-2 py-1 flex items-center rounded-md text-nowrap border border-indigo-200">Mock Data</span>
                     </div>
-                    <Table className="bg-white rounded-lg overflow-hidden border border-indigo-100 shadow-sm">
-                        <Thead className="bg-indigo-50/50">
-                            <Tr>
-                                <Th className="text-indigo-900">정산 대상월</Th>
-                                <Th className="text-indigo-900 text-right">정산 금액</Th>
-                                <Th className="text-indigo-900 text-center">지급 상태</Th>
-                            </Tr>
-                        </Thead>
-                        <Tbody>
-                            {mockSettlements.map(stl => (
-                                <Tr key={stl.settlementId} className="hover:bg-indigo-50/30">
-                                    <Td className="text-indigo-900 font-medium text-sm">
-                                        {format(new Date(stl.periodFrom), 'yyyy년 MM월')}
-                                    </Td>
-                                    <Td className="text-gray-900 font-extrabold text-right">
-                                        {stl.amount.toLocaleString()}원
-                                    </Td>
-                                    <Td className="text-center">
-                                        {getSettlementStatusBadge(stl.status)}
-                                    </Td>
+                    <div className="overflow-x-auto">
+                        <Table className="bg-white rounded-lg overflow-hidden border border-indigo-100 shadow-sm min-w-full">
+                            <Thead className="bg-indigo-50/50">
+                                <Tr>
+                                    <Th className="text-indigo-900">정산 대상월</Th>
+                                    <Th className="text-indigo-900 text-right">정산 금액</Th>
+                                    <Th className="text-indigo-900 text-center">지급 상태</Th>
+                                    <Th className="text-indigo-900 text-center">관리</Th>
                                 </Tr>
-                            ))}
-                        </Tbody>
-                    </Table>
+                            </Thead>
+                            <Tbody>
+                                {settlements.length === 0 && (
+                                    <Tr>
+                                        <Td colSpan={4} className="text-center py-6 text-gray-500 text-sm">기록된 정산 내역이 없습니다.</Td>
+                                    </Tr>
+                                )}
+                                {settlements.sort((a, b) => new Date(b.periodFrom).getTime() - new Date(a.periodFrom).getTime()).map(stl => (
+                                    <Tr key={stl.settlementId} className="hover:bg-indigo-50/30">
+                                        <Td className="text-indigo-900 font-medium text-sm whitespace-nowrap">
+                                            {format(new Date(stl.periodFrom), 'yyyy년 MM월')}
+                                        </Td>
+                                        <Td className="text-gray-900 font-extrabold text-right whitespace-nowrap">
+                                            {stl.amount.toLocaleString()}원
+                                        </Td>
+                                        <Td className="text-center whitespace-nowrap">
+                                            {getSettlementStatusBadge(stl.status)}
+                                        </Td>
+                                        <Td className="text-center whitespace-nowrap">
+                                            {stl.status === 'PENDING' && (
+                                                <button onClick={() => updateSettlementStatus(stl.settlementId, 'CONFIRMED', currentRole, 'Admin')} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100 font-semibold">확정하기</button>
+                                            )}
+                                            {stl.status === 'CONFIRMED' && (
+                                                <button onClick={() => updateSettlementStatus(stl.settlementId, 'PAID', currentRole, 'Admin')} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded border border-emerald-200 hover:bg-emerald-100 font-semibold">완료처리</button>
+                                            )}
+                                        </Td>
+                                    </Tr>
+                                ))}
+                            </Tbody>
+                        </Table>
+                    </div>
                 </Card>
             </div>
         </div>

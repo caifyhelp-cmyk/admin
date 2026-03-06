@@ -105,7 +105,7 @@ for (let i = 0; i < 80; i++) {
         status = 'REFUND';
     }
 
-    const amount = subscription.product === '블로그 자동화 + 연동형 홈페이지' ? 500000 : 300000;
+    const amount = subscription.product === '블로그 자동화 + 연동형 홈페이지' ? 550000 : 330000;
 
     mockPayments.push({
         paymentId: `pay_${String(i + 1).padStart(3, '0')}`,

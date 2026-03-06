@@ -90,6 +90,7 @@ export interface Sales {
   salesId: string;
   name: string;
   phone: string;
+  commissionRate?: number; // Override rate, e.g., 0.07 for 7%
 }
 
 export interface Settlement {
@@ -114,6 +115,11 @@ export type AuditActionType =
   | 'UPDATE_SALES_LEAD_STATUS'
   | 'CUSTOMER_REGISTER'
   | 'UPDATE_CUSTOMER_INFO'
+  | 'UPDATE_COMMISSION_RATE' // 요율 변경
+  | 'CREATE_SETTLEMENT' // 정산 예정 생성
+  | 'CONFIRM_SETTLEMENT' // 정산 확정
+  | 'COMPLETE_SETTLEMENT' // 정산 완료
+  | 'DEDUCT_SETTLEMENT' // 환불 차감 반영
   | string;
 
 export interface AuditLog {

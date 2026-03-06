@@ -8,8 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { useAuthStore } from '../state/auth';
 import { Users, AlertCircle, TrendingUp, ShieldCheck, Box, CreditCard, UserX } from 'lucide-react';
-import { format, parseISO, subDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from 'recharts';
+import { format, parseISO, subDays, startOfMonth, endOfMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 export const Dashboard: React.FC = () => {
     const customers = useCustomerStore(state => state.customers);
@@ -39,10 +39,6 @@ export const Dashboard: React.FC = () => {
         ? payments.filter(p => accessibleCustomerIds.has(p.customerId))
         : payments;
 
-    const accessibleLogs = currentRole === 'SALES'
-        ? auditLogs.filter(log => log.targetType === 'CUSTOMER' && accessibleCustomerIds.has(log.targetId))
-        : auditLogs;
-
     // Check Role Access
     const isManager = currentRole === 'MANAGER';
 
@@ -66,13 +62,28 @@ export const Dashboard: React.FC = () => {
 
     const thisMonthExpectedPayments = accessibleSubscriptions
         .filter(s => s.status === 'ACTIVE' && isWithinInterval(parseISO(s.nextBillingAt), { start: startOfMo, end: endOfMo }))
-        .reduce((sum, s) => sum + (s.product.includes('홈페이지') && s.product.includes('블로그') ? 500000 : 300000), 0);
+        .reduce((sum, s) => sum + (s.product.includes('홈페이지') && s.product.includes('블로그') ? 550000 : 330000), 0);
 
     const thisMonthCancellations = accessibleSubscriptions
         .filter(s => s.status === 'CANCELLED' && isWithinInterval(parseISO(s.endAt), { start: startOfMo, end: endOfMo }))
         .length;
 
-    // Product breakdown
+    const thisWeekNewCustomers = accessibleCustomers.filter(c => {
+        const d = parseISO(c.joinedAt);
+        return isWithinInterval(d, { start: startOfWeek(now), end: endOfWeek(now) });
+    }).length;
+
+    const trialExpiringCustomers = accessibleCustomers
+        .filter(c => c.serviceStatus === 'TRIAL' && typeof c.trialCount === 'number' && c.trialCount <= 3)
+        .sort((a, b) => (a.trialCount || 0) - (b.trialCount || 0));
+
+    const cancelledSubscriptionsList = accessibleSubscriptions
+        .filter(s => s.status === 'CANCELLED' && isWithinInterval(parseISO(s.endAt), { start: startOfMo, end: endOfMo }))
+        .map(s => {
+            const cust = accessibleCustomers.find(c => c.customerId === s.customerId);
+            return { ...s, customerName: cust?.name || 'Unknown' };
+        });
+
     const productStats = useMemo(() => {
         const counts: Record<string, number> = {};
         accessibleSubscriptions.forEach(s => {
@@ -83,10 +94,20 @@ export const Dashboard: React.FC = () => {
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [accessibleSubscriptions]);
 
-    // Recent data sets
-    const recentLogs = [...accessibleLogs]
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 5);
+    const paymentMethodStats = useMemo(() => {
+        const counts = { CARD: 0, TRANSFER: 0 };
+        accessiblePayments.forEach(p => {
+            if (p.status === 'PAID') {
+                if (p.method === 'CARD') counts.CARD++;
+                if (p.method === 'TRANSFER') counts.TRANSFER++;
+            }
+        });
+        return [
+            { name: '카드', value: counts.CARD },
+            { name: '계좌이체', value: counts.TRANSFER }
+        ];
+    }, [accessiblePayments]);
+    const COLORS = ['#4F46E5', '#10B981'];
 
     // Prepare Mini Chart Data (Last 7 Days Revenue)
     const chartData = useMemo(() => {
@@ -137,12 +158,12 @@ export const Dashboard: React.FC = () => {
                     <dd className="mt-4 text-3xl font-semibold text-gray-900">{trialCustomers}명</dd>
                 </Card>
 
-                <Card className="p-6 shadow-sm cursor-pointer hover:bg-gray-50" onClick={() => navigate('/inquiries')}>
+                <Card className="p-6 shadow-sm">
                     <div className="flex items-start justify-between">
-                        <dt className="text-sm font-medium text-gray-500 truncate">이번 달 문의 수</dt>
-                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                        <dt className="text-sm font-medium text-gray-500 truncate">이번 주 신규 가입</dt>
+                        <Users className="w-5 h-5 text-indigo-500" />
                     </div>
-                    <dd className="mt-4 text-3xl font-semibold text-gray-900">{thisMonthInquiries}건</dd>
+                    <dd className="mt-4 text-3xl font-semibold text-gray-900">{thisWeekNewCustomers}명</dd>
                 </Card>
 
                 {/* Sales / Financial KPIs (Hidden from MANAGER) */}
@@ -222,28 +243,53 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </Card>
 
-                {/* Recent Logs (For ADMIN/SALES or All) */}
-                <Card className="p-5 bg-white shadow-sm border border-gray-100 col-span-1 lg:col-span-2">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-bold text-gray-900">최근 활동 로그</h3>
-                        {currentRole === 'ADMIN' && (
-                            <button onClick={() => navigate('/audit')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">모두 보기</button>
-                        )}
+                {/* Payment Methods Breakdown */}
+                <Card className="p-5 bg-white shadow-sm border border-gray-100">
+                    <h3 className="text-base font-bold text-gray-900 mb-6">결제 수단 비중</h3>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={paymentMethodStats} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} label>
+                                    {paymentMethodStats.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
-                    <ul className="divide-y divide-gray-100">
-                        {recentLogs.length === 0 && <p className="text-sm text-gray-500 py-4">최근 활동 내역이 없습니다.</p>}
-                        {recentLogs.map((log) => (
-                            <li key={log.id} className="py-3 items-center flex justify-between hover:bg-gray-50 -mx-5 px-5 transition-colors">
+                </Card>
+
+                {/* Trial Expiration List */}
+                <Card className="p-5 bg-white shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-amber-600">체험판 임박 고객</h3>
+                    </div>
+                    <ul className="divide-y divide-gray-100 h-64 overflow-y-auto">
+                        {trialExpiringCustomers.length === 0 && <p className="text-sm text-gray-500 py-4">해당 고객이 없습니다.</p>}
+                        {trialExpiringCustomers.map(c => (
+                            <li key={c.customerId} className="py-3 flex justify-between items-center hover:bg-gray-50 -mx-5 px-5 cursor-pointer" onClick={() => navigate(`/customers/${c.customerId}`)}>
+                                <span className="text-sm font-semibold text-gray-900">{c.name}</span>
+                                <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-1 rounded">잔여 {c.trialCount}회</span>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
+
+                {/* Cancellation List */}
+                <Card className="p-5 bg-white shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-rose-600">이번 달 해지 예정</h3>
+                    </div>
+                    <ul className="divide-y divide-gray-100 h-64 overflow-y-auto">
+                        {cancelledSubscriptionsList.length === 0 && <p className="text-sm text-gray-500 py-4">해지 예정 고객이 없습니다.</p>}
+                        {cancelledSubscriptionsList.map(s => (
+                            <li key={s.subscriptionId} className="py-3 flex justify-between items-center hover:bg-gray-50 -mx-5 px-5 cursor-pointer" onClick={() => navigate(`/subscriptions`)}>
                                 <div className="flex flex-col">
-                                    <span className="text-sm font-semibold text-gray-900">
-                                        <span className="text-indigo-600 mr-2">[{log.actionType}]</span>
-                                        {log.actorName} ({log.actorRole})
-                                    </span>
-                                    <span className="text-xs text-gray-500 mt-1">
-                                        {log.targetType} - {log.targetId} {log.meta && JSON.stringify(log.meta)}
-                                    </span>
+                                    <span className="text-sm font-semibold text-gray-900">{s.customerName}</span>
+                                    <span className="text-xs text-gray-500">{s.product}</span>
                                 </div>
-                                <span className="text-xs text-gray-400 font-medium">{format(new Date(log.timestamp), 'yy/MM/dd HH:mm')}</span>
+                                <span className="text-xs font-medium text-rose-500">{format(parseISO(s.endAt), 'MM/dd')} 종료</span>
                             </li>
                         ))}
                     </ul>

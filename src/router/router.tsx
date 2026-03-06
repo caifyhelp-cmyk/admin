@@ -14,6 +14,7 @@ import { Payments } from '../pages/Payments';
 import { SalesLeads } from '../pages/SalesLeads';
 import { SalesLeadForm } from '../pages/SalesLeadForm';
 import { SalesLeadDetail } from '../pages/SalesLeadDetail';
+import { Settlements } from '../pages/Settlements';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 export const router = createHashRouter([
@@ -27,8 +28,30 @@ export const router = createHashRouter([
       { path: 'customers/:customerId', element: <CustomerDetail /> },
       { path: 'subscriptions', element: <Subscriptions /> },
       { path: 'payments', element: <Payments /> },
-      { path: 'inquiries', element: <Inquiries /> },
-      { path: 'inquiries/:inquiryId', element: <InquiryDetail /> },
+      {
+        path: 'settlements',
+        element: (
+          <ProtectedRoute allowedRoles={['SALES']}>
+            <Settlements />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'inquiries',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+            <Inquiries />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'inquiries/:inquiryId',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+            <InquiryDetail />
+          </ProtectedRoute>
+        )
+      },
       {
         path: 'sales',
         element: (
@@ -48,7 +71,7 @@ export const router = createHashRouter([
       {
         path: 'sales-leads',
         element: (
-          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+          <ProtectedRoute allowedRoles={['ADMIN']}>
             <SalesLeads />
           </ProtectedRoute>
         )
@@ -56,7 +79,7 @@ export const router = createHashRouter([
       {
         path: 'sales-leads/new',
         element: (
-          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+          <ProtectedRoute allowedRoles={['ADMIN']}>
             <SalesLeadForm />
           </ProtectedRoute>
         )
@@ -64,12 +87,19 @@ export const router = createHashRouter([
       {
         path: 'sales-leads/:leadId',
         element: (
-          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+          <ProtectedRoute allowedRoles={['ADMIN']}>
             <SalesLeadDetail />
           </ProtectedRoute>
         )
       },
-      { path: 'analytics', element: <Analytics /> },
+      {
+        path: 'analytics',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
+            <Analytics />
+          </ProtectedRoute>
+        )
+      },
       {
         path: 'audit',
         element: (

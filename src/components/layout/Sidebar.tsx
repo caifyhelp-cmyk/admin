@@ -13,10 +13,11 @@ export const Sidebar: React.FC = () => {
         { name: '고객 관리', href: '/customers', icon: Users, roles: ['ADMIN', 'MANAGER', 'SALES'] },
         { name: '구독 관리', href: '/subscriptions', icon: Repeat, roles: ['ADMIN', 'MANAGER', 'SALES'] },
         { name: '결제 내역', href: '/payments', icon: CreditCard, roles: ['ADMIN', 'MANAGER', 'SALES'] },
-        { name: '문의 관리', href: '/inquiries', icon: MessageSquare, roles: ['ADMIN', 'MANAGER', 'SALES'] },
-        { name: '영업점 DB', href: '/sales-leads', icon: Briefcase, roles: ['ADMIN', 'SALES'] },
+        { name: '정산 내역', href: '/settlements', icon: Briefcase, roles: ['SALES'] },
+        { name: '문의 관리', href: '/inquiries', icon: MessageSquare, roles: ['ADMIN', 'MANAGER'] },
+        { name: '영업점 DB', href: '/sales-leads', icon: Briefcase, roles: ['ADMIN'] },
         { name: '영업점 관리', href: '/sales', icon: Briefcase, roles: ['ADMIN'] },
-        { name: '매출 분석', href: '/analytics', icon: BarChart2, roles: ['ADMIN', 'MANAGER', 'SALES'] },
+        { name: '매출 분석', href: '/analytics', icon: BarChart2, roles: ['ADMIN', 'MANAGER'] },
         { name: '감사 로그', href: '/audit', icon: ClipboardList, roles: ['ADMIN'] },
     ];
 
