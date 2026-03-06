@@ -15,7 +15,7 @@ export type PaymentStatus =
   | 'REFUND_REQUESTED';
 
 export type InquiryStatus = 'OPEN' | 'ANSWERED';
-export type ServiceStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL';
+export type ServiceStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL' | 'FREE';
 
 export interface Customer {
   customerId: string;
@@ -58,6 +58,7 @@ export interface Subscription {
 export interface Payment {
   paymentId: string;
   customerId: string;
+  salesId: string | null;
   subscriptionId: string;
   amount: number;
   currency: string;
@@ -100,11 +101,26 @@ export interface Settlement {
   status: 'PENDING' | 'CONFIRMED' | 'PAID';
 }
 
+export type AuditActionType =
+  | 'UPDATE_CUSTOMER_STATUS' // 고객 상태 변경
+  | 'UPDATE_CUSTOMER_PRODUCT' // 상품 변경
+  | 'UPDATE_CUSTOMER_ROLE' // 권한 변경
+  | 'GRANT_TRIAL' // 체험판 부여
+  | 'CONSUME_TRIAL' // 체험판 차감
+  | 'PROCESS_PAYMENT' // 결제 반영
+  | 'PROCESS_REFUND' // 환불 처리
+  | 'UPDATE_INQUIRY_ANSWER' // 문의 답변 수정
+  | 'CREATE_SALES_LEAD'
+  | 'UPDATE_SALES_LEAD_STATUS'
+  | 'CUSTOMER_REGISTER'
+  | 'UPDATE_CUSTOMER_INFO'
+  | string;
+
 export interface AuditLog {
   id: string;
   actorRole: Role;
   actorName: string;
-  actionType: string;
+  actionType: AuditActionType;
   targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | 'SALES_LEAD' | string;
   targetId: string;
   meta?: {

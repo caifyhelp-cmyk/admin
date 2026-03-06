@@ -15,8 +15,9 @@ export const Header: React.FC = () => {
             case 'inquiries': return '문의 관리';
             case 'sales': return '영업점 관리';
             case 'analytics': return '매출 분석';
-            case 'audit': return '운영 로그';
-            default: return 'Admin Portal';
+            case 'audit': return '감사 로그';
+            case 'sales-leads': return '영업점 DB';
+            default: return 'CAiFY Admin';
         }
     };
 

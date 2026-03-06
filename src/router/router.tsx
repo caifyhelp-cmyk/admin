@@ -14,6 +14,7 @@ import { Payments } from '../pages/Payments';
 import { SalesLeads } from '../pages/SalesLeads';
 import { SalesLeadForm } from '../pages/SalesLeadForm';
 import { SalesLeadDetail } from '../pages/SalesLeadDetail';
+import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 export const router = createHashRouter([
   {
@@ -28,13 +29,55 @@ export const router = createHashRouter([
       { path: 'payments', element: <Payments /> },
       { path: 'inquiries', element: <Inquiries /> },
       { path: 'inquiries/:inquiryId', element: <InquiryDetail /> },
-      { path: 'sales', element: <Sales /> },
-      { path: 'sales/:salesId', element: <SalesDetail /> },
-      { path: 'sales-leads', element: <SalesLeads /> },
-      { path: 'sales-leads/new', element: <SalesLeadForm /> },
-      { path: 'sales-leads/:leadId', element: <SalesLeadDetail /> },
+      {
+        path: 'sales',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <Sales />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'sales/:salesId',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <SalesDetail />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'sales-leads',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+            <SalesLeads />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'sales-leads/new',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+            <SalesLeadForm />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'sales-leads/:leadId',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN', 'SALES']}>
+            <SalesLeadDetail />
+          </ProtectedRoute>
+        )
+      },
       { path: 'analytics', element: <Analytics /> },
-      { path: 'audit', element: <AuditLogs /> },
+      {
+        path: 'audit',
+        element: (
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AuditLogs />
+          </ProtectedRoute>
+        )
+      },
     ],
   },
 ]);

@@ -18,6 +18,7 @@ interface CustomerState {
     updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
     updateCustomerField: (customerId: string, field: keyof Customer, value: any, actorRole: string, actorName: string) => void;
     registerCustomerMock: (name: string, phone: string, accountId: string) => void;
+    consumeTrial: (customerId: string, actorRole: string, actorName: string) => void;
 }
 
 export const useCustomerStore = create<CustomerState>((set, get) => ({
@@ -112,6 +113,53 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
             targetType: 'CUSTOMER',
             targetId: newCustId,
             meta: { reason: '신규 고객 가입 (모킹)', phoneMatch: !!matchLead }
+        });
+    },
+
+    consumeTrial: (customerId, actorRole, actorName) => {
+        set(state => {
+            const customer = state.customers.find(c => c.customerId === customerId);
+            if (!customer) return state;
+
+            const currentCount = customer.trialCount ?? 0;
+            if (currentCount <= 0) return state;
+
+            const newCount = currentCount - 1;
+            let newStatus = customer.serviceStatus;
+
+            if (newCount === 0) {
+                newStatus = 'FREE';
+            }
+
+            useAuditLogStore.getState().addAuditLog({
+                actorRole: actorRole as any,
+                actorName,
+                actionType: 'CONSUME_TRIAL',
+                targetType: 'CUSTOMER',
+                targetId: customerId,
+                meta: { before: currentCount, after: newCount }
+            });
+
+            if (newStatus === 'FREE' && customer.serviceStatus !== 'FREE') {
+                useAuditLogStore.getState().addAuditLog({
+                    actorRole: 'ADMIN',
+                    actorName: 'System',
+                    actionType: 'UPDATE_CUSTOMER_STATUS',
+                    targetType: 'CUSTOMER',
+                    targetId: customerId,
+                    meta: {
+                        prevStatus: customer.serviceStatus,
+                        newStatus: 'FREE',
+                        reason: 'Trial count exhausted',
+                    }
+                });
+            }
+
+            return {
+                customers: state.customers.map(c =>
+                    c.customerId === customerId ? { ...c, trialCount: newCount, serviceStatus: newStatus } : c
+                )
+            };
         });
     }
 }));

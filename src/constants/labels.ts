@@ -1,7 +1,7 @@
 export const ROLE_LABELS: Record<string, string> = {
-    SUPER_ADMIN: '최고 관리자',
-    ADMIN: '일반 관리자',
-    SALES_BRANCH: '영업점'
+    ADMIN: '전체 관리자',
+    MANAGER: '매니저 (운영)',
+    SALES: '영업 담당자'
 };
 
 export const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
@@ -37,5 +37,7 @@ export const BREADCRUMB_LABELS: Record<string, string> = {
     payments: '결제 내역',
     inquiries: '문의 관리',
     sales: '영업점 관리',
-    'audit-logs': '감사 로그'
+    'sales-leads': '영업점 DB',
+    'audit': '감사 로그',
+    'analytics': '매출 분석'
 };

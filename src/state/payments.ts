@@ -11,7 +11,9 @@ interface PaymentState {
     processRefund: (paymentId: string, actorRole: Role, actorName: string) => void;
 
     // Selectors
+    // Selectors
     getPaymentsByCustomerId: (customerId: string) => Payment[];
+    getPaymentsVisibleToRole: (role: Role, salesId: string) => Payment[];
 }
 
 export const usePaymentStore = create<PaymentState>((set, get) => ({
@@ -80,5 +82,13 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
 
     getPaymentsByCustomerId: (customerId) => {
         return get().payments.filter(p => p.customerId === customerId);
+    },
+
+    getPaymentsVisibleToRole: (role, salesId) => {
+        const all = get().payments;
+        if (role === 'SALES') {
+            return all.filter(p => p.salesId === salesId);
+        }
+        return all;
     }
 }));

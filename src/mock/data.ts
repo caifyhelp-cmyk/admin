@@ -110,6 +110,7 @@ for (let i = 0; i < 80; i++) {
     mockPayments.push({
         paymentId: `pay_${String(i + 1).padStart(3, '0')}`,
         customerId: customer.customerId,
+        salesId: customer.assignedSalesId,
         subscriptionId: subscription.subscriptionId,
         amount,
         currency: 'KRW',
