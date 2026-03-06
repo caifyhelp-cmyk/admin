@@ -15,7 +15,6 @@ const getStylesByStatus = (status: string): { container: string, text: string, t
         case 'ACTIVE':
         case 'PAID':
         case 'ANSWERED':
-        case 'CONFIRMED':
             return {
                 container: 'bg-green-50 text-green-700 ring-green-600/20',
                 text: 'bg-green-500',
@@ -24,6 +23,7 @@ const getStylesByStatus = (status: string): { container: string, text: string, t
         // Warning / Pending
         case 'TRIAL':
         case 'PENDING':
+        case 'ON_HOLD':
         case 'REFUND_REQUESTED':
             return {
                 container: 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',

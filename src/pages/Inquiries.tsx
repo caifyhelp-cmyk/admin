@@ -126,14 +126,8 @@ export const Inquiries: React.FC = () => {
                             <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('customerName')}>
                                 고객명 <SortIcon columnKey="customerName" />
                             </Th>
-                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('type')}>
-                                문의 유형 <SortIcon columnKey="type" />
-                            </Th>
-                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('createdAt')}>
-                                작성일 <SortIcon columnKey="createdAt" />
-                            </Th>
                             <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('status')}>
-                                상태 <SortIcon columnKey="status" />
+                                답변 여부 <SortIcon columnKey="status" />
                             </Th>
                         </Tr>
                     </Thead>
@@ -142,10 +136,12 @@ export const Inquiries: React.FC = () => {
                             <Tr key={item.inquiryId} onClick={() => handleRowClick(item.inquiryId)} className="cursor-pointer hover:bg-gray-50">
                                 <Td className="font-medium text-gray-900 truncate max-w-sm">{item.title}</Td>
                                 <Td className="text-gray-600">{item.customerName}</Td>
-                                <Td className="text-gray-500">{item.type}</Td>
                                 <Td className="text-gray-500">{format(new Date(item.createdAt), 'yyyy-MM-dd HH:mm')}</Td>
                                 <Td>
                                     <StatusBadge status={item.status} label={INQUIRY_STATUS_LABELS[item.status] || item.status} type="inquiry" />
+                                </Td>
+                                <Td className="text-gray-500 font-medium">
+                                    {item.status === 'ANSWERED' ? <span className="text-emerald-600">O (작성됨)</span> : <span className="text-gray-400">X (미답변)</span>}
                                 </Td>
                             </Tr>
                         ))}

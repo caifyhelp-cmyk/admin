@@ -24,7 +24,8 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
     const salesState = useSalesStore.getState();
 
     mockPayments.forEach(payment => {
-        if (!payment.salesId || payment.status === 'REFUND') return;
+        // Exclude refunds natively from generating a pending settlement.
+        if (!payment.salesId || payment.status === 'REFUND' || payment.status === 'REFUND_REQUESTED' || payment.status === 'FAILED') return;
         const sId = payment.salesId as string;
 
         const rate = salesState.getSalesById(sId)?.commissionRate ?? salesState.baseCommissionRate;
@@ -55,7 +56,8 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
         settlements: initialSettlements,
 
         processPaymentForSettlement: (payment) => {
-            if (!payment.salesId) return;
+            // Exclude refunds natively from generating a pending settlement.
+            if (!payment.salesId || payment.status === 'REFUND' || payment.status === 'REFUND_REQUESTED' || payment.status === 'FAILED') return;
             const sId = payment.salesId as string;
 
             const salesStore = useSalesStore.getState();
@@ -117,8 +119,6 @@ export const useSettlementStore = create<SettlementState>((set, get) => {
 
                 if (existingIdx >= 0) {
                     const updated = [...state.settlements];
-                    // Instead of deducting amount from a monthly pot, we just remove the settlement entirely or drop it to 0. 
-                    // To follow standard logic, refunding a payment drops its commission to 0 or deletes it. Let's filter it out.
                     const targetStl = updated[existingIdx];
                     updated.splice(existingIdx, 1);
 

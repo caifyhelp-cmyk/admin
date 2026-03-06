@@ -5,6 +5,9 @@ import { useSalesStore } from '../state/sales';
 import { Card } from '../components/ui/Card';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { format } from 'date-fns';
+import { usePaymentStore } from '../state/payments';
+import { useCustomerStore } from '../state/customers';
+import { useSubscriptionStore } from '../state/subscriptions';
 
 export const Settlements: React.FC = () => {
     const { currentSalesId } = useAuthStore();
@@ -13,6 +16,10 @@ export const Settlements: React.FC = () => {
 
     const salesInfo = currentSalesId ? getSalesById(currentSalesId) : null;
     const commissionRate = salesInfo?.commissionRate ?? baseCommissionRate;
+
+    const { payments } = usePaymentStore();
+    const { customers } = useCustomerStore();
+    const { subscriptions } = useSubscriptionStore();
 
     // SALES 권한만 이 페이지에 접근하므로 currentSalesId는 존재해야 함
     const settlements = currentSalesId ? getSettlementsBySalesId(currentSalesId) : [];
@@ -62,48 +69,59 @@ export const Settlements: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-300">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    정산 ID
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    결제 일시
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    정산 금액
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    상태
-                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">결제 일시</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">고객명</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상품</th>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">결제 금액</th>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">요율</th>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">정산 금액</th>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                             {settlements.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                                         표시할 정산 내역이 없습니다.
                                     </td>
                                 </tr>
                             ) : (
-                                settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(settlement => (
-                                    <tr key={settlement.settlementId} className="hover:bg-gray-50">
-                                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                                            {settlement.settlementId}
-                                        </td>
-                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                            {format(new Date(settlement.paidAt), 'yyyy-MM-dd HH:mm')}
-                                        </td>
-                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 font-semibold">
-                                            {settlement.amount.toLocaleString()}원
-                                        </td>
-                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                            <StatusBadge
-                                                status={settlement.status}
-                                                label={settlement.status === 'PENDING' ? '정산 예정' : settlement.status === 'CONFIRMED' ? '정산 확정' : '정산 완료'}
-                                                type="default"
-                                            />
-                                        </td>
-                                    </tr>
-                                )))}
+                                settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(settlement => {
+                                    const payment = payments.find(p => p.paymentId === settlement.paymentId);
+                                    const customer = customers.find(c => c.customerId === payment?.customerId);
+                                    const sub = subscriptions.find(s => s.subscriptionId === payment?.subscriptionId);
+                                    const stlRate = payment ? (settlement.amount / payment.amount) : commissionRate;
+
+                                    return (
+                                        <tr key={settlement.settlementId} className="hover:bg-gray-50">
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                                {format(new Date(settlement.paidAt), 'yyyy-MM-dd HH:mm')}
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
+                                                {customer?.name || '-'}
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                                                {sub?.product || '-'}
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 text-right">
+                                                {payment?.amount.toLocaleString() || 0}원
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 text-center">
+                                                {(stlRate * 100).toFixed(1)}%
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-indigo-700 font-bold text-right">
+                                                {settlement.amount.toLocaleString()}원
+                                            </td>
+                                            <td className="whitespace-nowrap px-6 py-4 text-sm text-center">
+                                                <StatusBadge
+                                                    status={settlement.status}
+                                                    label={settlement.status === 'PENDING' ? '정산 예정' : settlement.status === 'ON_HOLD' ? '정산 보류' : '정산 완료'}
+                                                    type="default"
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                }))}
                         </tbody>
                     </table>
                 </div>

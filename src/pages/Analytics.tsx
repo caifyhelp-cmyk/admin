@@ -11,7 +11,7 @@ import { PAYMENT_STATUS_LABELS } from '../constants/labels';
 import { EmptyState } from '../components/ui/EmptyState';
 import { format, isToday, isThisMonth, parseISO, isWithinInterval } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Navigate } from 'react-router-dom';
 
 type PeriodFilter = 'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM';
 
@@ -22,6 +22,10 @@ export const Analytics: React.FC = () => {
     const { sales } = useSalesStore();
     const { currentRole, currentSalesId } = useAuthStore();
     const [searchParams] = useSearchParams();
+
+    if (currentRole === 'SALES') {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     const [period, setPeriod] = useState<PeriodFilter>((searchParams.get('period') === 'thisMonth' ? 'THIS_MONTH' : 'ALL') as PeriodFilter);
     const [startDate, setStartDate] = useState('');
@@ -57,13 +61,23 @@ export const Analytics: React.FC = () => {
         }
     });
 
+    let directRevenue = 0;
+    let salesTotalRevenue = 0;
+
     const salesRevMap = new Map<string, number>();
     filteredPayments.forEach(p => {
         const cust = customers.find(c => c.customerId === p.customerId);
         const agent = sales.find(s => s.salesId === cust?.assignedSalesId);
-        const label = agent ? agent.name : '직접 가입 (영업자 없음)';
-        const prev = salesRevMap.get(label) || 0;
-        salesRevMap.set(label, p.status === 'REFUND' ? prev - p.amount : prev + p.amount);
+
+        const amount = p.status === 'REFUND' ? -p.amount : p.amount;
+
+        if (agent) {
+            salesTotalRevenue += amount;
+            const prev = salesRevMap.get(agent.name) || 0;
+            salesRevMap.set(agent.name, prev + amount);
+        } else {
+            directRevenue += amount;
+        }
     });
 
     const chartDataMap = new Map<string, number>();
@@ -127,7 +141,13 @@ export const Analytics: React.FC = () => {
             <dl className={`grid grid-cols-1 gap-5 ${currentRole === 'SALES' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
                 <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
                     <dt className="text-sm font-medium text-gray-500">총 매출 (선택 기간)</dt>
-                    <dd className="mt-2 text-3xl font-bold tracking-tight text-gray-900 border-l-4 border-indigo-500 pl-3">{totalRevenue.toLocaleString()}원</dd>
+                    <div>
+                        <dd className="mt-2 text-3xl font-bold tracking-tight text-gray-900 border-l-4 border-indigo-500 pl-3">{totalRevenue.toLocaleString()}원</dd>
+                        <div className="mt-2 pl-4 text-xs text-gray-500 flex flex-col gap-1">
+                            <span>본사 직접 유입: <strong className="text-indigo-600">{directRevenue.toLocaleString()}원</strong></span>
+                            <span>영업자 유입: <strong className="text-emerald-600">{salesTotalRevenue.toLocaleString()}원</strong></span>
+                        </div>
+                    </div>
                 </Card>
                 <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
                     <dt className="text-sm font-medium text-gray-500">가장 많이 팔린 상품</dt>
@@ -136,9 +156,9 @@ export const Analytics: React.FC = () => {
                         <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestProductRev.toLocaleString()}원</dd>
                     </div>
                 </Card>
-                {currentRole !== 'SALES' && (
+                {currentRole === 'ADMIN' && (
                     <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
-                        <dt className="text-sm font-medium text-gray-500">최우수 영업점/유입</dt>
+                        <dt className="text-sm font-medium text-gray-500">최우수 영업점</dt>
                         <div>
                             <dd className="mt-2 text-2xl font-bold tracking-tight text-blue-600 truncate border-l-4 border-blue-500 pl-3">{bestSales}</dd>
                             <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestSalesRev.toLocaleString()}원</dd>

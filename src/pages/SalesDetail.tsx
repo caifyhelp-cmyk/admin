@@ -9,7 +9,8 @@ import { format } from 'date-fns';
 import { usePaymentStore } from '../state/payments';
 import { useSettlementStore } from '../state/settlements';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
-import type { Settlement } from '../mock/types';
+import type { Settlement, Payment } from '../mock/types';
+import { useSubscriptionStore } from '../state/subscriptions';
 
 export const SalesDetail: React.FC = () => {
     const { salesId } = useParams<{ salesId: string }>();
@@ -24,6 +25,8 @@ export const SalesDetail: React.FC = () => {
     const paymentsStore = usePaymentStore(state => state.payments);
     const settlements = useSettlementStore(state => state.getSettlementsBySalesId(salesId!));
     const { updateSettlementStatus } = useSettlementStore();
+    const { subscriptions } = useSubscriptionStore();
+    const payments = usePaymentStore(state => state.payments);
 
     // Sales detail is only visible to ADMIN
     if (currentRole !== 'ADMIN') {
@@ -59,7 +62,7 @@ export const SalesDetail: React.FC = () => {
     const getSettlementStatusBadge = (status: Settlement['status']) => {
         switch (status) {
             case 'PAID': return <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-emerald-200">정산 완료</span>;
-            case 'CONFIRMED': return <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-blue-200">정산 확정</span>;
+            case 'ON_HOLD': return <span className="bg-orange-50 text-orange-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-orange-200">정산 보류</span>;
             case 'PENDING': return <span className="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-gray-200">정산 예정</span>;
             default: return null;
         }
@@ -157,39 +160,65 @@ export const SalesDetail: React.FC = () => {
                         <Table className="bg-white rounded-lg overflow-hidden border border-indigo-100 shadow-sm min-w-full">
                             <Thead className="bg-indigo-50/50">
                                 <Tr>
-                                    <Th className="text-indigo-900">결제일</Th>
-                                    <Th className="text-indigo-900 text-right">정산 금액</Th>
-                                    <Th className="text-indigo-900 text-center">지급 상태</Th>
-                                    <Th className="text-indigo-900 text-center">관리</Th>
+                                    <Th className="text-indigo-900 border-b border-indigo-100">결제일</Th>
+                                    <Th className="text-indigo-900 border-b border-indigo-100">고객명</Th>
+                                    <Th className="text-indigo-900 border-b border-indigo-100">상품</Th>
+                                    <Th className="text-indigo-900 text-right border-b border-indigo-100">결제금액</Th>
+                                    <Th className="text-indigo-900 text-center border-b border-indigo-100">요율</Th>
+                                    <Th className="text-indigo-900 text-right border-b border-indigo-100">정산예정금</Th>
+                                    <Th className="text-indigo-900 text-center border-b border-indigo-100">지급 상태</Th>
+                                    <Th className="text-indigo-900 text-center border-b border-indigo-100">관리</Th>
                                 </Tr>
                             </Thead>
                             <Tbody>
                                 {settlements.length === 0 && (
                                     <Tr>
-                                        <Td colSpan={4} className="text-center py-6 text-gray-500 text-sm">기록된 정산 내역이 없습니다.</Td>
+                                        <Td colSpan={8} className="text-center py-6 text-gray-500 text-sm">기록된 정산 내역이 없습니다.</Td>
                                     </Tr>
                                 )}
-                                {settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(stl => (
-                                    <Tr key={stl.settlementId} className="hover:bg-indigo-50/30">
-                                        <Td className="text-indigo-900 font-medium text-sm whitespace-nowrap">
-                                            {format(new Date(stl.paidAt), 'yyyy년 MM월 dd일')}
-                                        </Td>
-                                        <Td className="text-gray-900 font-extrabold text-right whitespace-nowrap">
-                                            {stl.amount.toLocaleString()}원
-                                        </Td>
-                                        <Td className="text-center whitespace-nowrap">
-                                            {getSettlementStatusBadge(stl.status)}
-                                        </Td>
-                                        <Td className="text-center whitespace-nowrap">
-                                            {stl.status === 'PENDING' && (
-                                                <button onClick={() => updateSettlementStatus(stl.settlementId, 'CONFIRMED', currentRole, 'Admin')} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100 font-semibold">확정하기</button>
-                                            )}
-                                            {stl.status === 'CONFIRMED' && (
-                                                <button onClick={() => updateSettlementStatus(stl.settlementId, 'PAID', currentRole, 'Admin')} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded border border-emerald-200 hover:bg-emerald-100 font-semibold">완료처리</button>
-                                            )}
-                                        </Td>
-                                    </Tr>
-                                ))}
+                                {settlements.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()).map(stl => {
+                                    const payment = payments.find(p => p.paymentId === stl.paymentId);
+                                    const customer = customers.find(c => c.customerId === payment?.customerId);
+                                    const sub = subscriptions.find(s => s.subscriptionId === payment?.subscriptionId);
+                                    const stlRate = payment ? (stl.amount / payment.amount) : commissionRate;
+
+                                    return (
+                                        <Tr key={stl.settlementId} className="hover:bg-indigo-50/30">
+                                            <Td className="text-indigo-900 font-medium text-sm whitespace-nowrap">
+                                                {format(new Date(stl.paidAt), 'yyyy-MM-dd')}
+                                            </Td>
+                                            <Td className="text-gray-900 font-medium whitespace-nowrap">
+                                                {customer?.name || '-'}
+                                            </Td>
+                                            <Td className="text-gray-600 text-sm whitespace-nowrap">
+                                                {sub?.product || '-'}
+                                            </Td>
+                                            <Td className="text-gray-600 text-right whitespace-nowrap">
+                                                {payment?.amount.toLocaleString() || 0}원
+                                            </Td>
+                                            <Td className="text-gray-600 text-center whitespace-nowrap">
+                                                {(stlRate * 100).toFixed(1)}%
+                                            </Td>
+                                            <Td className="text-indigo-700 font-extrabold text-right whitespace-nowrap">
+                                                {stl.amount.toLocaleString()}원
+                                            </Td>
+                                            <Td className="text-center whitespace-nowrap">
+                                                {getSettlementStatusBadge(stl.status)}
+                                            </Td>
+                                            <Td className="text-center whitespace-nowrap">
+                                                {stl.status === 'PENDING' && (
+                                                    <button onClick={() => updateSettlementStatus(stl.settlementId, 'PAID', currentRole, 'Admin')} className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded border border-emerald-200 hover:bg-emerald-100 font-semibold mr-1">완료</button>
+                                                )}
+                                                {stl.status === 'PENDING' && (
+                                                    <button onClick={() => updateSettlementStatus(stl.settlementId, 'ON_HOLD', currentRole, 'Admin')} className="text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded border border-orange-200 hover:bg-orange-100 font-semibold">보류</button>
+                                                )}
+                                                {stl.status === 'ON_HOLD' && (
+                                                    <button onClick={() => updateSettlementStatus(stl.settlementId, 'PENDING', currentRole, 'Admin')} className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded border border-gray-200 hover:bg-gray-100 font-semibold mr-1">보류 해제</button>
+                                                )}
+                                            </Td>
+                                        </Tr>
+                                    );
+                                })}
                             </Tbody>
                         </Table>
                     </div>

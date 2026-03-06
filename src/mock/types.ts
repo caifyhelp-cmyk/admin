@@ -104,7 +104,7 @@ export interface Settlement {
   commissionRate: number;
   amount: number; // calculated commission amount
   paidAt: string; // ISO date of payment
-  status: 'PENDING' | 'CONFIRMED' | 'ON_HOLD' | 'PAID';
+  status: 'PENDING' | 'ON_HOLD' | 'PAID';
 }
 
 export type AuditActionType =
@@ -122,7 +122,6 @@ export type AuditActionType =
   | 'UPDATE_CUSTOMER_INFO'
   | 'UPDATE_COMMISSION_RATE' // 요율 변경
   | 'CREATE_SETTLEMENT' // 정산 예정 생성
-  | 'CONFIRM_SETTLEMENT' // 정산 확정
   | 'COMPLETE_SETTLEMENT' // 정산 완료
   | 'DEDUCT_SETTLEMENT' // 환불 차감 반영
   | string;

@@ -180,6 +180,17 @@ export const CustomerDetail: React.FC = () => {
               </dd>
             </div>
             <div>
+              <dt className="text-gray-500 border-t pt-4">체험판 제공 상태</dt>
+              <dd className="font-medium text-gray-900 mt-1 flex flex-col gap-1">
+                <span>지급 횟수: <strong className="text-indigo-600">{customer.trialCount || 0}회</strong></span>
+                {customer.trialCount && customer.trialCount > 0 ? (
+                  <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full inline-block w-max">사용 가능</span>
+                ) : (
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full inline-block w-max">소진됨 / 미지급</span>
+                )}
+              </dd>
+            </div>
+            <div>
               <dt className="text-gray-500">담당 영업자</dt>
               <dd className="font-medium text-gray-900 mt-1">
                 {salesAgent ? (

@@ -134,17 +134,20 @@ export const InquiryDetail: React.FC = () => {
                         value={answerInput}
                         onChange={(e) => setAnswerInput(e.target.value)}
                         placeholder="고객에게 전달될 답변 내용을 상세하게 입력해 주세요."
+                        readOnly={currentRole === 'SALES'}
                     />
-                    <div className="mt-4 flex justify-between items-center">
-                        <span className="text-xs text-gray-500">답변을 저장하면 고객에게 카카오 알림톡이 즉시 발송됩니다.</span>
-                        <button
-                            type="button"
-                            onClick={handleAnswerSubmit}
-                            className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
-                        >
-                            {inquiry.answer ? '수정된 답변 반영 및 재전송' : '답변 확정 및 완료 전송'}
-                        </button>
-                    </div>
+                    {currentRole !== 'SALES' && (
+                        <div className="mt-4 flex justify-between items-center">
+                            <span className="text-xs text-gray-500">답변을 저장하면 고객에게 카카오 알림톡이 즉시 발송됩니다.</span>
+                            <button
+                                type="button"
+                                onClick={handleAnswerSubmit}
+                                className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
+                            >
+                                {inquiry.answer ? '수정된 답변 반영 및 재전송' : '답변 확정 및 완료 전송'}
+                            </button>
+                        </div>
+                    )}
                 </Card>
             </div>
         </div>
