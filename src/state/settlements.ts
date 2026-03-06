@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { Settlement, Payment, Role } from '../mock/types';
 import { useAuditLogStore } from './auditLogs';
 import { useSalesStore } from './sales';
+import { useCustomerStore } from './customers';
+import { useSubscriptionStore } from './subscriptions';
 import { mockPayments } from '../mock/data';
 
 interface SettlementState {
