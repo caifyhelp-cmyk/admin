@@ -19,7 +19,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Sales as SalesType } from '../mock/types';
 
 export const Sales: React.FC = () => {
-    const { sales } = useSalesStore();
+    const { sales, baseCommissionRate, updateBaseCommissionRate } = useSalesStore();
     const { customers } = useCustomerStore();
     const { payments } = usePaymentStore();
     const { subscriptions } = useSubscriptionStore();
@@ -28,6 +28,10 @@ export const Sales: React.FC = () => {
     const [selectedSalesId, setSelectedSalesId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'CUSTOMERS' | 'PERFORMANCE' | 'SETTLEMENTS'>('CUSTOMERS');
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Global Rate Edit State
+    const [isEditingGlobalRate, setIsEditingGlobalRate] = useState(false);
+    const [globalRateInput, setGlobalRateInput] = useState('');
 
     if (currentRole !== 'ADMIN') {
         return <Navigate to="/" replace />;
@@ -75,19 +79,59 @@ export const Sales: React.FC = () => {
     const selectedSales = baseSales.find(s => s.salesId === selectedSalesId);
     const selectedSalesCustomers = customers.filter(c => c.assignedSalesId === selectedSalesId);
 
+    const handleGlobalRateSave = () => {
+        const val = parseFloat(globalRateInput);
+        if (!isNaN(val) && val >= 0 && val <= 100) {
+            updateBaseCommissionRate(val / 100, currentRole, 'Admin');
+            setIsEditingGlobalRate(false);
+        } else {
+            alert('올바른 요율(0~100)을 입력하세요.');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <h2 className="text-xl font-bold text-gray-900">영업점 관리</h2>
 
-            <Card className="p-4 bg-white border border-gray-200">
-                <div className="md:w-1/2">
-                    <SearchInput
-                        value={searchQuery}
-                        onChange={setSearchQuery}
-                        placeholder="영업자명 검색..."
-                    />
-                </div>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <Card className="p-5 bg-white border border-gray-200 md:col-span-2 flex items-center">
+                    <div className="w-full md:w-1/2">
+                        <SearchInput
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder="영업자명 검색..."
+                        />
+                    </div>
+                </Card>
+
+                <Card className="p-5 bg-indigo-50 border border-indigo-100 flex flex-col justify-center">
+                    <div className="flex justify-between items-center mb-1">
+                        <h3 className="text-sm font-bold text-indigo-900">전역 기본 수수료율</h3>
+                        {!isEditingGlobalRate ? (
+                            <button onClick={() => { setIsEditingGlobalRate(true); setGlobalRateInput((baseCommissionRate * 100).toString()); }} className="text-xs bg-white text-indigo-700 px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-100 font-semibold">변경</button>
+                        ) : (
+                            <div className="flex gap-1">
+                                <button onClick={handleGlobalRateSave} className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 font-semibold">저장</button>
+                                <button onClick={() => setIsEditingGlobalRate(false)} className="text-xs bg-white text-gray-600 px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 font-semibold">취소</button>
+                            </div>
+                        )}
+                    </div>
+                    {!isEditingGlobalRate ? (
+                        <p className="text-2xl font-extrabold text-indigo-700">{(baseCommissionRate * 100).toFixed(1)}%</p>
+                    ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                            <input
+                                type="number"
+                                className="w-24 px-2 py-1 text-base font-semibold border border-indigo-300 rounded focus:ring-indigo-500 focus:border-indigo-500"
+                                value={globalRateInput}
+                                onChange={(e) => setGlobalRateInput(e.target.value)}
+                                placeholder="%"
+                            />
+                            <span className="text-lg font-bold text-indigo-700">%</span>
+                        </div>
+                    )}
+                </Card>
+            </div>
 
             <Card className="bg-white">
                 <Table>
