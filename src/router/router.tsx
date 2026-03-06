@@ -12,7 +12,7 @@ import { SalesDetail } from '../pages/SalesDetail';
 import { Subscriptions } from '../pages/Subscriptions';
 import { Payments } from '../pages/Payments';
 
-export const router = createBrowserRouter(
+export const router = createHashRouter(
   [
     {
       path: '/',
