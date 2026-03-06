@@ -82,13 +82,18 @@ export interface Settlement {
 }
 
 export interface AuditLog {
-  logId: string;
+  id: string;
   actorRole: Role;
   actorName: string;
   actionType: string;
   targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | string;
   targetId: string;
-  before?: Record<string, unknown> | null;
-  after?: Record<string, unknown> | null;
+  meta?: {
+    amount?: number;
+    prevStatus?: string;
+    newStatus?: string;
+    reason?: string;
+    [key: string]: any;
+  };
   timestamp: string;
 }
