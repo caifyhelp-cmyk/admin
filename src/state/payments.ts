@@ -22,7 +22,7 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         if (!payment || payment.status === 'REFUND' || payment.status === 'FAILED') return;
 
         const prevStatus = payment.status;
-        const newStatus = 'REFUND_REQUESTED' as any; // Temporary mock cast
+        const newStatus = 'REFUND' as any;
 
         set(state => ({
             payments: state.payments.map(p =>
@@ -33,7 +33,7 @@ export const usePaymentStore = create<PaymentState>((set, get) => ({
         useAuditLogStore.getState().addAuditLog({
             actorRole,
             actorName,
-            actionType: 'REFUND_REQUESTED',
+            actionType: 'REFUND',
             targetType: 'PAYMENT',
             targetId: paymentId,
             meta: {

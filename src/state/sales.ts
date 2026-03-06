@@ -4,14 +4,11 @@ import { mockSales } from '../mock/data';
 
 interface SalesState {
     sales: Sales[];
-
-    // Selectors
     getSalesById: (id: string) => Sales | undefined;
 }
 
-export const useSalesStore = create<SalesState>((set, get) => ({
+export const useSalesStore = create<SalesState>((_, get) => ({
     sales: mockSales,
-
     getSalesById: (id) => {
         return get().sales.find(s => s.salesId === id);
     }

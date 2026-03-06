@@ -1,9 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { useAppStore } from '../state/store';
-import { useRole } from '../state/role';
+import { usePaymentStore } from '../state/payments';
+import { useCustomerStore } from '../state/customers';
+import { useSubscriptionStore } from '../state/subscriptions';
+import { useSalesStore } from '../state/sales';
+import { useAuthStore } from '../state/auth';
 import { Card } from '../components/ui/Card';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
-import { Badge, getPaymentBadgeVariant, PaymentStatusKR } from '../components/ui/Badge';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { PAYMENT_STATUS_LABELS } from '../constants/labels';
+import { EmptyState } from '../components/ui/EmptyState';
 import { format, isToday, isThisMonth, parseISO, isWithinInterval } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useSearchParams } from 'react-router-dom';
@@ -11,26 +16,25 @@ import { useSearchParams } from 'react-router-dom';
 type PeriodFilter = 'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM';
 
 export const Analytics: React.FC = () => {
-    const { payments, customers, subscriptions, sales } = useAppStore();
-    const { currentRole, currentSalesId } = useRole();
+    const { payments } = usePaymentStore();
+    const { getCustomersVisibleToRole, customers } = useCustomerStore();
+    const { subscriptions } = useSubscriptionStore();
+    const { sales } = useSalesStore();
+    const { currentRole, currentSalesId } = useAuthStore();
     const [searchParams] = useSearchParams();
 
     const [period, setPeriod] = useState<PeriodFilter>((searchParams.get('period') === 'thisMonth' ? 'THIS_MONTH' : 'ALL') as PeriodFilter);
-    // Simple custom range state
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
-    // 1. Role Base filtering
     let basePayments = payments;
-    if (currentRole === 'SALES_BRANCH') {
-        const assignedCustIds = new Set(customers.filter(c => c.assignedSalesId === currentSalesId).map(c => c.customerId));
-        basePayments = payments.filter(p => assignedCustIds.has(p.customerId));
-    }
+    const visibleCustomers = getCustomersVisibleToRole(currentRole, currentSalesId);
+    const assignedCustIds = new Set(visibleCustomers.map(c => c.customerId));
+    basePayments = payments.filter(p => assignedCustIds.has(p.customerId));
 
-    // 2. Filter by period & PAID status only
     const filteredPayments = useMemo(() => {
         return basePayments.filter(p => {
-            if (p.status !== 'PAID' && p.status !== 'REFUND') return false; // FAILED and PENDING are excluded from revenue calculation
+            if (p.status !== 'PAID' && p.status !== 'REFUND') return false;
 
             const date = parseISO(p.paidAt);
             if (period === 'TODAY') return isToday(date);
@@ -38,13 +42,12 @@ export const Analytics: React.FC = () => {
             if (period === 'CUSTOM' && startDate && endDate) {
                 return isWithinInterval(date, { start: parseISO(startDate), end: parseISO(endDate) });
             }
-            return true; // if ALL
+            return true;
         }).sort((a, b) => b.paidAt.localeCompare(a.paidAt));
     }, [basePayments, period, startDate, endDate]);
 
     const totalRevenue = filteredPayments.reduce((sum, p) => p.status === 'REFUND' ? sum - p.amount : sum + p.amount, 0);
 
-    // By Product
     const productRevMap = new Map<string, number>();
     filteredPayments.forEach(p => {
         const sub = subscriptions.find(s => s.subscriptionId === p.subscriptionId);
@@ -54,7 +57,6 @@ export const Analytics: React.FC = () => {
         }
     });
 
-    // By Sales Agent
     const salesRevMap = new Map<string, number>();
     filteredPayments.forEach(p => {
         const cust = customers.find(c => c.customerId === p.customerId);
@@ -64,7 +66,6 @@ export const Analytics: React.FC = () => {
         salesRevMap.set(label, p.status === 'REFUND' ? prev - p.amount : prev + p.amount);
     });
 
-    // Prepare Chart Data (group by date)
     const chartDataMap = new Map<string, number>();
     filteredPayments.forEach(p => {
         const day = format(parseISO(p.paidAt), 'MM/dd');
@@ -73,10 +74,8 @@ export const Analytics: React.FC = () => {
     });
     const chartData = Array.from(chartDataMap.entries())
         .map(([date, revenue]) => ({ date, revenue }))
-        .sort((a, b) => a.date.localeCompare(b.date)); // Very naive string sort, usually requires date parsing for proper x-axis sorting
+        .sort((a, b) => a.date.localeCompare(b.date));
 
-
-    // Highest grossing product logic
     let bestProduct = '데이터 없음';
     let bestProductRev = 0;
     productRevMap.forEach((rev, name) => {
@@ -91,11 +90,9 @@ export const Analytics: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">매출 분석</h2>
-            </div>
+            <h2 className="text-xl font-bold text-gray-900">매출 분석</h2>
 
-            <Card className="p-4 bg-gray-50 border border-gray-200">
+            <Card className="p-4 bg-white border border-gray-200">
                 <div className="flex flex-wrap gap-4 items-center">
                     <select
                         value={period}
@@ -128,83 +125,89 @@ export const Analytics: React.FC = () => {
             </Card>
 
             <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <Card className="px-4 py-5 sm:p-6 shadow-sm border border-gray-100">
-                    <dt className="truncate text-sm font-medium text-gray-500">총 매출 (선택 기간)</dt>
-                    <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">{totalRevenue.toLocaleString()}원</dd>
+                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
+                    <dt className="text-sm font-medium text-gray-500">총 매출 (선택 기간)</dt>
+                    <dd className="mt-2 text-3xl font-bold tracking-tight text-gray-900 border-l-4 border-indigo-500 pl-3">{totalRevenue.toLocaleString()}원</dd>
                 </Card>
-                <Card className="px-4 py-5 sm:p-6 shadow-sm border border-gray-100">
-                    <dt className="truncate text-sm font-medium text-gray-500">가장 많이 팔린 상품</dt>
-                    <dd className="mt-1 text-2xl font-semibold tracking-tight text-indigo-600 truncate">{bestProduct}</dd>
-                    <dd className="text-sm font-medium text-gray-500 mt-1">{bestProductRev.toLocaleString()}원</dd>
+                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
+                    <dt className="text-sm font-medium text-gray-500">가장 많이 팔린 상품</dt>
+                    <div>
+                        <dd className="mt-2 text-2xl font-bold tracking-tight text-emerald-600 truncate border-l-4 border-emerald-500 pl-3">{bestProduct}</dd>
+                        <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestProductRev.toLocaleString()}원</dd>
+                    </div>
                 </Card>
-                <Card className="px-4 py-5 sm:p-6 shadow-sm border border-gray-100">
-                    <dt className="truncate text-sm font-medium text-gray-500">최고의 영업/유입 경로</dt>
-                    <dd className="mt-1 text-2xl font-semibold tracking-tight text-green-600 truncate">{bestSales}</dd>
-                    <dd className="text-sm font-medium text-gray-500 mt-1">{bestSalesRev.toLocaleString()}원</dd>
+                <Card className="px-5 py-6 bg-white shadow-sm border border-gray-100 flex flex-col justify-between hover:-translate-y-0.5 transition-transform">
+                    <dt className="text-sm font-medium text-gray-500">최우수 영업점/유입</dt>
+                    <div>
+                        <dd className="mt-2 text-2xl font-bold tracking-tight text-blue-600 truncate border-l-4 border-blue-500 pl-3">{bestSales}</dd>
+                        <dd className="text-sm font-medium text-gray-400 mt-2 pl-4 border-l-4 border-transparent">{bestSalesRev.toLocaleString()}원</dd>
+                    </div>
                 </Card>
             </dl>
 
-            <Card className="p-4 border border-gray-100 shadow-sm">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">매출 추이</h3>
-                <div className="h-72 w-full">
+            <Card className="p-5 bg-white shadow-sm border border-gray-100">
+                <h3 className="text-base font-bold text-gray-900 mb-6">기간별 매출 추이</h3>
+                <div className="h-80 w-full pt-4">
                     {chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
+                            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                <XAxis dataKey="date" stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#6B7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value.toLocaleString()}`} />
+                                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickMargin={12} />
+                                <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} tickMargin={12} />
                                 <Tooltip
                                     formatter={(value: any) => [`${Number(value).toLocaleString()}원`, '매출']}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    cursor={{ fill: '#f3f4f6' }}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }}
                                 />
-                                <Bar dataKey="revenue" fill="#4F46E5" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                <Bar dataKey="revenue" fill="#4F46E5" radius={[6, 6, 0, 0]} maxBarSize={50} animationDuration={1000} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400 text-sm">해당 기간의 결제 데이터가 없습니다.</div>
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <EmptyState title="차트 데이터 없음" description="해당 기간의 매출 데이터가 없습니다." />
+                        </div>
                     )}
                 </div>
             </Card>
 
             <div className="pt-4">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">결제 목록 (해당 기간 유효/환불 결제만 표시)</h3>
-                <Table>
-                    <Thead>
-                        <Tr>
-                            <Th>결제일</Th>
-                            <Th>고객명</Th>
-                            <Th>결제 상품</Th>
-                            <Th>결제 금액</Th>
-                            <Th>상태</Th>
-                        </Tr>
-                    </Thead>
-                    <Tbody>
-                        {filteredPayments.map(p => {
-                            const c = customers.find(c => c.customerId === p.customerId);
-                            const s = subscriptions.find(s => s.subscriptionId === p.subscriptionId);
-                            return (
-                                <Tr key={p.paymentId}>
-                                    <Td>{format(parseISO(p.paidAt), 'yyyy-MM-dd HH:mm')}</Td>
-                                    <Td className="font-medium text-gray-900">{c?.name || p.customerId}</Td>
-                                    <Td>{s?.product || '알 수 없음'}</Td>
-                                    <Td className={p.status === 'REFUND' ? 'text-red-500' : 'text-gray-900'}>
-                                        {p.status === 'REFUND' ? '-' : ''}{p.amount.toLocaleString()}원
-                                    </Td>
-                                    <Td>
-                                        <Badge variant={getPaymentBadgeVariant(p.status)}>{PaymentStatusKR[p.status]}</Badge>
-                                    </Td>
-                                </Tr>
-                            )
-                        })}
-                        {filteredPayments.length === 0 && (
+                <h3 className="text-base font-bold text-gray-900 mb-4">해당 기간 결제 목록</h3>
+                <Card className="bg-white border-gray-200">
+                    <Table>
+                        <Thead>
                             <Tr>
-                                <Td colSpan={5} className="text-center py-8 text-gray-500">데이터가 없습니다.</Td>
+                                <Th>결제일</Th>
+                                <Th>고객명</Th>
+                                <Th>결제 상품</Th>
+                                <Th>결제 금액</Th>
+                                <Th>상태</Th>
                             </Tr>
-                        )}
-                    </Tbody>
-                </Table>
+                        </Thead>
+                        <Tbody>
+                            {filteredPayments.map(p => {
+                                const c = customers.find(c => c.customerId === p.customerId);
+                                const s = subscriptions.find(s => s.subscriptionId === p.subscriptionId);
+                                return (
+                                    <Tr key={p.paymentId} className="hover:bg-gray-50">
+                                        <Td className="text-gray-500">{format(parseISO(p.paidAt), 'yyyy-MM-dd HH:mm')}</Td>
+                                        <Td className="font-medium text-gray-900">{c?.name || p.customerId}</Td>
+                                        <Td className="text-gray-600">{s?.product || '-'}</Td>
+                                        <Td className={p.status === 'REFUND' ? 'text-red-500 font-semibold' : 'text-gray-900 font-semibold'}>
+                                            {p.status === 'REFUND' ? '-' : ''}{p.amount.toLocaleString()}원
+                                        </Td>
+                                        <Td>
+                                            <StatusBadge status={p.status} label={PAYMENT_STATUS_LABELS[p.status]} type="payment" />
+                                        </Td>
+                                    </Tr>
+                                )
+                            })}
+                        </Tbody>
+                    </Table>
+                    {filteredPayments.length === 0 && (
+                        <EmptyState description="조건에 맞는 데이터가 없습니다." />
+                    )}
+                </Card>
             </div>
-
         </div>
     );
 };

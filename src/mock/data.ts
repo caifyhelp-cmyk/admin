@@ -93,9 +93,9 @@ export const mockInquiries: Inquiry[] = Array.from({ length: 50 }).map((_, i) =>
 
 export const mockAuditLogs: AuditLog[] = [
     {
-        logId: 'audit_001',
-        actorRole: 'ADMIN',
-        actorName: 'System Admin',
+        id: 'audit_001',
+        actorRole: 'SUPER_ADMIN',
+        actorName: 'Admin User',
         actionType: 'UPDATE_SUBSCRIPTION',
         targetType: 'SUBSCRIPTION',
         targetId: 'sub_cust_011',

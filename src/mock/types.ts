@@ -15,8 +15,10 @@ export type PaymentStatus =
   | 'REFUND_REQUESTED';
 
 export type InquiryStatus = 'OPEN' | 'ANSWERED';
+export type ServiceStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL';
 
 export interface Customer {
+<<<<<<< HEAD
   customerId: string;
   name: string;
   industry: string;
@@ -24,6 +26,18 @@ export interface Customer {
   accountId: string;
   joinedAt: string;
   assignedSalesId: string | null;
+=======
+    customerId: string;
+    name: string; // 고객명
+    industry: string; // 업종
+    contact: string;
+    accountId: string;
+    joinedAt: string; // ISO date string
+    assignedSalesId: string | null;
+    serviceStatus?: ServiceStatus;
+    trialEndDate?: string;
+    prompt?: string;
+>>>>>>> f453829 (update admin ui)
 }
 
 export interface Subscription {
@@ -82,6 +96,7 @@ export interface Settlement {
 }
 
 export interface AuditLog {
+<<<<<<< HEAD
   id: string;
   actorRole: Role;
   actorName: string;
@@ -97,3 +112,22 @@ export interface AuditLog {
   };
   timestamp: string;
 }
+=======
+    id: string;
+    actorRole: Role;
+    actorName: string;
+    actionType: string;
+    targetType: 'PAYMENT' | 'SUBSCRIPTION' | 'INQUIRY' | 'CUSTOMER' | 'SALES' | string;
+    targetId: string;
+    meta?: {
+        amount?: number;
+        prevStatus?: string;
+        newStatus?: string;
+        reason?: string;
+        [key: string]: any;
+    };
+    before?: any;
+    after?: any;
+    timestamp: string;
+}
+>>>>>>> f453829 (update admin ui)

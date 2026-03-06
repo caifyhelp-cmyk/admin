@@ -1,18 +1,21 @@
 import React from 'react';
-import { RoleSwitcher } from '../../state/role';
+import { RoleSwitcher } from '../ui/RoleSwitcher';
 import { useLocation } from 'react-router-dom';
 
 export const Header: React.FC = () => {
     const location = useLocation();
 
     const getPageTitle = (pathname: string) => {
-        switch (pathname) {
-            case '/dashboard': return 'Dashboard';
-            case '/customers': return 'Customers';
-            case '/inquiries': return 'Inquiries';
-            case '/sales': return 'Sales';
-            case '/analytics': return 'Analytics';
-            case '/audit': return 'Audit Logs';
+        const path = pathname.split('/')[1];
+        switch (path) {
+            case 'dashboard': return '대시보드';
+            case 'customers': return '고객 관리';
+            case 'subscriptions': return '구독 관리';
+            case 'payments': return '결제 내역';
+            case 'inquiries': return '문의 관리';
+            case 'sales': return '영업점 관리';
+            case 'analytics': return '매출 분석';
+            case 'audit': return '운영 로그';
             default: return 'Admin Portal';
         }
     };

@@ -1,21 +1,22 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useRole } from '../../state/role';
+import { useAuthStore } from '../../state/auth';
 import { LayoutDashboard, Users, MessageSquare, Briefcase, BarChart2, ClipboardList, Repeat, CreditCard } from 'lucide-react';
 import { clsx } from 'clsx';
+import { BREADCRUMB_LABELS } from '../../constants/labels';
 
 export const Sidebar: React.FC = () => {
-    const { currentRole } = useRole();
+    const { currentRole } = useAuthStore();
 
     const navigation = [
-        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Customers', href: '/customers', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Subscriptions', href: '/subscriptions', icon: Repeat, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Payments', href: '/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Inquiries', href: '/inquiries', icon: MessageSquare, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Sales', href: '/sales', icon: Briefcase, roles: ['SUPER_ADMIN'] }, // Sales page visible to SUPER_ADMIN only
-        { name: 'Analytics', href: '/analytics', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
-        { name: 'Audit Logs', href: '/audit', icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { name: '대시보드', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: BREADCRUMB_LABELS['customers'] || '고객 관리', href: '/customers', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: BREADCRUMB_LABELS['subscriptions'] || '구독 관리', href: '/subscriptions', icon: Repeat, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: BREADCRUMB_LABELS['payments'] || '결제 내역', href: '/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: BREADCRUMB_LABELS['inquiries'] || '문의 관리', href: '/inquiries', icon: MessageSquare, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: BREADCRUMB_LABELS['sales'] || '영업점 관리', href: '/sales', icon: Briefcase, roles: ['SUPER_ADMIN'] },
+        { name: '매출 분석', href: '/analytics', icon: BarChart2, roles: ['SUPER_ADMIN', 'ADMIN', 'SALES_BRANCH'] },
+        { name: '감사 로그', href: '/audit', icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN'] },
     ];
 
     const filteredNav = navigation.filter(item => item.roles.includes(currentRole));

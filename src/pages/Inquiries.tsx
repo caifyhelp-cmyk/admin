@@ -1,15 +1,28 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../state/store';
-import { useRole } from '../state/role';
+import { useInquiryStore } from '../state/inquiries';
+import { useCustomerStore } from '../state/customers';
+import { useAuthStore } from '../state/auth';
+import { useTableData } from '../state/table/useTableData';
 import { Card } from '../components/ui/Card';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../components/ui/Table';
-import { Badge, getInquiryBadgeVariant, InquiryStatusKR } from '../components/ui/Badge';
+import { SearchInput } from '../components/ui/SearchInput';
+import { SelectFilter } from '../components/ui/SelectFilter';
+import { Pagination } from '../components/ui/Pagination';
+import { EmptyState } from '../components/ui/EmptyState';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { INQUIRY_STATUS_LABELS } from '../constants/labels';
 import { Drawer } from '../components/ui/Drawer';
 import { format } from 'date-fns';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import type { Inquiry } from '../mock/types';
 
 export const Inquiries: React.FC = () => {
-    const { inquiries, customers, updateInquiryStatus } = useAppStore();
-    const { currentRole, currentSalesId } = useRole();
+    const { inquiries, updateInquiryStatus } = useInquiryStore();
+    const { getCustomersVisibleToRole, customers } = useCustomerStore();
+    const { currentRole, currentSalesId } = useAuthStore();
+
+    // Filters
+    const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(null);
 
@@ -17,23 +30,44 @@ export const Inquiries: React.FC = () => {
     const [answerDraft, setAnswerDraft] = useState('');
     const [isEditingAnswer, setIsEditingAnswer] = useState(false);
 
-    // Role Base filtering
-    let baseInquiries = inquiries;
-    if (currentRole === 'SALES_BRANCH') {
-        const assignedCustIds = new Set(customers.filter(c => c.assignedSalesId === currentSalesId).map(c => c.customerId));
-        baseInquiries = inquiries.filter(i => assignedCustIds.has(i.customerId));
-    }
+    // Derive list with customerName
+    const visibleCustomers = getCustomersVisibleToRole(currentRole, currentSalesId);
+    const visibleCustomerIds = new Set(visibleCustomers.map(c => c.customerId));
 
-    // Final filtered
-    const displayList = baseInquiries
-        .filter(i => filterStatus ? i.status === filterStatus : true)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    const baseInquiries = inquiries
+        .filter(i => visibleCustomerIds.has(i.customerId))
         .map(i => {
             const c = customers.find(c => c.customerId === i.customerId);
-            return { ...i, customerName: c?.name || '알 수 없음' };
+            return { ...i, customerName: c?.name || '알 수 없음' } as Inquiry & { customerName: string };
         });
 
-    const selectedInquiry = displayList.find(i => i.inquiryId === selectedInquiryId);
+    const {
+        paginatedData: paginatedList,
+        totalItems,
+        totalPages,
+        currentPage,
+        setCurrentPage,
+        sortConfig,
+        handleSort,
+        itemsPerPage
+    } = useTableData<Inquiry & { customerName: string }>({
+        data: baseInquiries,
+        searchQuery,
+        searchFields: ['title', 'customerName'],
+        filterConfig: filterStatus ? [{ key: 'status', value: filterStatus }] : [],
+        initialSortKey: 'createdAt',
+        initialSortDirection: 'desc',
+        itemsPerPage: 10
+    });
+
+    const SortIcon = ({ columnKey }: { columnKey: keyof (Inquiry & { customerName: string }) }) => {
+        if (sortConfig?.key !== columnKey) return <ArrowUpDown className="ml-1 h-4 w-4 text-gray-400 inline" />;
+        return sortConfig.direction === 'asc'
+            ? <ArrowUp className="ml-1 h-4 w-4 text-indigo-600 inline" />
+            : <ArrowDown className="ml-1 h-4 w-4 text-indigo-600 inline" />;
+    };
+
+    const selectedInquiry = baseInquiries.find(i => i.inquiryId === selectedInquiryId);
 
     const handleRowClick = (inqId: string) => {
         setSelectedInquiryId(inqId);
@@ -49,69 +83,87 @@ export const Inquiries: React.FC = () => {
 
     const handleSaveAnswer = () => {
         if (!selectedInquiry || !answerDraft.trim()) return;
-        updateInquiryStatus(selectedInquiry.inquiryId, 'ANSWERED', answerDraft, currentRole);
+        updateInquiryStatus(selectedInquiry.inquiryId, 'ANSWERED', answerDraft, currentRole, 'Current User');
         setIsEditingAnswer(false);
     };
 
     const handleResendNotification = () => {
         if (!selectedInquiry) return;
-        // By updating with same content, it triggers the audit log update
-        // Note: Our store auto-sends ONLY on CREATE. Let's fire a specific custom mock event
-        // To keep it simple, we just re-save it to trigger UPDATE_INQUIRY_ANSWER. 
-        // In a real app we'd have a specific `resendNotification` action.
         alert('카카오 알림톡을 재전송했습니다! (Mock)');
     };
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">문의 내역</h2>
-            </div>
+            <h2 className="text-xl font-bold text-gray-900">문의 관리</h2>
 
-            <Card className="p-4 bg-gray-50 border border-gray-200">
-                <div className="flex gap-4">
-                    <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 px-3 text-sm focus:ring-2 focus:ring-indigo-600 sm:max-w-xs"
-                    >
-                        <option value="">상태 전체</option>
-                        {Object.entries(InquiryStatusKR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
+            <Card className="p-4 bg-white border border-gray-200">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                        <SearchInput
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder="문의 제목 또는 고객명 검색..."
+                        />
+                    </div>
+                    <div className="w-full md:w-48">
+                        <SelectFilter
+                            value={filterStatus}
+                            onChange={setFilterStatus}
+                            placeholder="상태 전체"
+                            options={Object.entries(INQUIRY_STATUS_LABELS).map(([k, v]) => ({ label: v, value: k }))}
+                        />
+                    </div>
                 </div>
             </Card>
 
-            <Table>
-                <Thead>
-                    <Tr>
-                        <Th>문의 제목</Th>
-                        <Th>고객명</Th>
-                        <Th>문의 유형</Th>
-                        <Th>작성일</Th>
-                        <Th>상태</Th>
-                    </Tr>
-                </Thead>
-                <Tbody>
-                    {displayList.map(item => (
-                        <Tr key={item.inquiryId} onClick={() => handleRowClick(item.inquiryId)} className="cursor-pointer">
-                            <Td className="font-medium text-gray-900 truncate max-w-sm">{item.title}</Td>
-                            <Td>{item.customerName}</Td>
-                            <Td>{item.type}</Td>
-                            <Td>{format(new Date(item.createdAt), 'yyyy-MM-dd HH:mm')}</Td>
-                            <Td>
-                                <Badge variant={getInquiryBadgeVariant(item.status)}>
-                                    {InquiryStatusKR[item.status] || item.status}
-                                </Badge>
-                            </Td>
-                        </Tr>
-                    ))}
-                    {displayList.length === 0 && (
+            <Card className="bg-white">
+                <Table>
+                    <Thead>
                         <Tr>
-                            <Td colSpan={5} className="text-center py-8 text-gray-500">데이터가 없습니다.</Td>
+                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('title')}>
+                                문의 제목 <SortIcon columnKey="title" />
+                            </Th>
+                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('customerName')}>
+                                고객명 <SortIcon columnKey="customerName" />
+                            </Th>
+                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('type')}>
+                                문의 유형 <SortIcon columnKey="type" />
+                            </Th>
+                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('createdAt')}>
+                                작성일 <SortIcon columnKey="createdAt" />
+                            </Th>
+                            <Th className="cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('status')}>
+                                상태 <SortIcon columnKey="status" />
+                            </Th>
                         </Tr>
-                    )}
-                </Tbody>
-            </Table>
+                    </Thead>
+                    <Tbody>
+                        {paginatedList.map(item => (
+                            <Tr key={item.inquiryId} onClick={() => handleRowClick(item.inquiryId)} className="cursor-pointer hover:bg-gray-50">
+                                <Td className="font-medium text-gray-900 truncate max-w-sm">{item.title}</Td>
+                                <Td className="text-gray-600">{item.customerName}</Td>
+                                <Td className="text-gray-500">{item.type}</Td>
+                                <Td className="text-gray-500">{format(new Date(item.createdAt), 'yyyy-MM-dd HH:mm')}</Td>
+                                <Td>
+                                    <StatusBadge status={item.status} label={INQUIRY_STATUS_LABELS[item.status] || item.status} type="inquiry" />
+                                </Td>
+                            </Tr>
+                        ))}
+                    </Tbody>
+                </Table>
+
+                {paginatedList.length === 0 && (
+                    <EmptyState description="조건에 맞는 문의 내역이 없습니다." />
+                )}
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                />
+            </Card>
 
             <Drawer
                 isOpen={selectedInquiryId !== null}
@@ -126,9 +178,7 @@ export const Inquiries: React.FC = () => {
                                     <h3 className="text-lg font-semibold text-gray-900 leading-tight">{selectedInquiry.title}</h3>
                                     <p className="text-sm text-gray-500 mt-1">{selectedInquiry.customerName} · {selectedInquiry.type} · {format(new Date(selectedInquiry.createdAt), 'yyyy-MM-dd HH:mm')}</p>
                                 </div>
-                                <Badge variant={getInquiryBadgeVariant(selectedInquiry.status)}>
-                                    {InquiryStatusKR[selectedInquiry.status]}
-                                </Badge>
+                                <StatusBadge status={selectedInquiry.status} label={INQUIRY_STATUS_LABELS[selectedInquiry.status]} type="inquiry" />
                             </div>
                             <div className="mt-4 prose prose-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded text-sm">
                                 {selectedInquiry.content}
@@ -198,7 +248,6 @@ export const Inquiries: React.FC = () => {
                     </div>
                 )}
             </Drawer>
-
         </div>
     );
 };

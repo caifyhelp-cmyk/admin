@@ -1,17 +1,7 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-
-const routeMap: Record<string, string> = {
-    'dashboard': '대시보드',
-    'customers': '고객 관리',
-    'subscriptions': '구독 관리',
-    'payments': '결제 내역 관리',
-    'inquiries': '고객 문의 관리',
-    'sales': '영업 관리',
-    'analytics': '매출 분석',
-    'audit': '운영 로그',
-};
+import { BREADCRUMB_LABELS } from '../../constants/labels';
 
 export const Breadcrumb: React.FC = () => {
     const location = useLocation();
@@ -29,7 +19,11 @@ export const Breadcrumb: React.FC = () => {
                     const isLast = index === paths.length - 1;
                     const to = `/${paths.slice(0, index + 1).join('/')}`;
 
-                    let label = routeMap[path] || path;
+                    let label = BREADCRUMB_LABELS[path] || path;
+
+                    if (path === 'dashboard') label = '대시보드';
+                    if (path === 'analytics') label = '매출 분석';
+                    if (path === 'audit') label = '운영 로그';
 
                     if (index > 0) {
                         const prevPath = paths[index - 1];
